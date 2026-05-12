@@ -11,6 +11,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getFabricProfile } from './fabricVersions.js'
+import { renderModFeaturesJava } from './javaFeatures.js'
 import type { ModSpec } from './modspec.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -74,6 +75,9 @@ function patchModProject(workDir: string, spec: ModSpec): void {
     `public static final String MOD_ID = "${modId}";`,
   )
   writeFileSync(javaPath, javaSrc, 'utf8')
+
+  const modFeaturesPath = join(workDir, 'src/main/java/fi/benkku/mod/ModFeatures.java')
+  writeFileSync(modFeaturesPath, renderModFeaturesJava(spec, profile.javaRelease), 'utf8')
 }
 
 function findRemappedJar(workDir: string): string | null {
@@ -95,6 +99,11 @@ export async function runFabricBuild(
     patchModProject(workDir, spec)
 
     log += `[benkku] workdir ${workDir} mc=${spec.minecraftVersion}\n`
+    const wish = spec.wishText?.trim()
+    if (wish) {
+      const short = wish.length > 200 ? `${wish.slice(0, 200)}…` : wish
+      log += `[benkku] wish: ${short}\n`
+    }
 
     await new Promise<void>((resolvePromise, reject) => {
       const proc = spawn('./gradlew', ['build', '--no-daemon'], {

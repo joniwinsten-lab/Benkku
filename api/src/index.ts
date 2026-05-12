@@ -4,6 +4,7 @@ import { cors } from 'hono/cors'
 import { randomUUID } from 'node:crypto'
 import { SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
 import { ModSpecSchema, validateModSpecForBuild } from './modspec.js'
+import { interpretToDraft, parseInterpretRequest } from './interpret.js'
 import { runFabricBuild } from './worker.js'
 
 type JobStatus = 'queued' | 'running' | 'done' | 'error'
@@ -49,7 +50,11 @@ app.use(
 )
 
 app.get('/health', (c) =>
-  c.json({ ok: true, fabricMinecraft: SUPPORTED_MINECRAFT_VERSIONS }),
+  c.json({
+    ok: true,
+    fabricMinecraft: SUPPORTED_MINECRAFT_VERSIONS,
+    interpretAvailable: Boolean(process.env.OPENAI_API_KEY),
+  }),
 )
 
 app.post('/v1/build', async (c) => {
@@ -97,16 +102,57 @@ app.post('/v1/build', async (c) => {
   return c.json({ jobId: id }, 202)
 })
 
+app.post('/v1/interpret', async (c) => {
+  if (!process.env.OPENAI_API_KEY) {
+    return c.json({ error: 'Tulkinta ei ole käytössä (OPENAI_API_KEY puuttuu).' }, 503)
+  }
+
+  let body: unknown
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Virheellinen JSON' }, 400)
+  }
+
+  const parsed = parseInterpretRequest(body)
+  if (!parsed.ok) {
+    return c.json({ error: 'Virheellinen pyyntö', details: parsed.error.flatten() }, 400)
+  }
+
+  try {
+    const draft = await interpretToDraft(parsed.data)
+    return c.json({ draft })
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return c.json({ error: msg }, 502)
+  }
+})
+
 app.get('/v1/build/:id', (c) => {
   const id = c.req.param('id')
   const j = jobs.get(id)
   if (!j) return c.json({ error: 'Tuntematon työ' }, 404)
+
+  const specParsed =
+    j.spec != null && typeof j.spec === 'object' ? ModSpecSchema.safeParse(j.spec) : null
+  const specFields =
+    specParsed?.success === true
+      ? {
+          modId: specParsed.data.modId,
+          displayName: specParsed.data.displayName,
+          minecraftVersion: specParsed.data.minecraftVersion,
+          loader: specParsed.data.loader,
+          wishText: specParsed.data.wishText ?? null,
+          features: specParsed.data.features ?? [],
+        }
+      : null
 
   return c.json({
     id: j.id,
     status: j.status,
     error: j.error ?? null,
     logTail: j.log ? j.log.slice(-8000) : null,
+    spec: specFields,
   })
 })
 

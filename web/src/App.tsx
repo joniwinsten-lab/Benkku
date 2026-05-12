@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Loader = 'fabric' | 'forge'
 
@@ -21,6 +21,19 @@ function parseFilenameFromDisposition(header: string | null): string | null {
   if (!header) return null
   const m = /filename="([^"]+)"/.exec(header)
   return m?.[1] ?? null
+}
+
+type SimpleItemFeature = { type: 'simple_item'; itemId: string; displayName: string }
+
+type InterpretDraft = {
+  loader: Loader
+  minecraftVersion: string
+  modId: string
+  displayName: string
+  wishText: string
+  features: SimpleItemFeature[]
+  wishSummary?: string
+  warnings?: string[]
 }
 
 function resolveApiBase(): string {
@@ -48,6 +61,17 @@ export default function App() {
   const [displayName, setDisplayName] = useState('Benkun modi')
   const [wishText, setWishText] = useState('')
 
+  const [simpleItemEnabled, setSimpleItemEnabled] = useState(false)
+  const [itemId, setItemId] = useState('')
+  const [itemDisplayName, setItemDisplayName] = useState('')
+
+  const [interpretAvailable, setInterpretAvailable] = useState(false)
+  const [interpretPhase, setInterpretPhase] = useState<'idle' | 'loading' | 'done' | 'error'>(
+    'idle',
+  )
+  const [interpretDraft, setInterpretDraft] = useState<InterpretDraft | null>(null)
+  const [interpretMessage, setInterpretMessage] = useState<string | null>(null)
+
   const [buildPhase, setBuildPhase] = useState<'idle' | 'queued' | 'running' | 'done' | 'error'>(
     'idle',
   )
@@ -55,16 +79,38 @@ export default function App() {
   const [jobId, setJobId] = useState<string | null>(null)
 
   const modIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,63}$/.test(modId), [modId])
+  const itemIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,40}$/.test(itemId), [itemId])
+  const itemDisplayOk = useMemo(
+    () => itemDisplayName.trim().length >= 1 && itemDisplayName.trim().length <= 64,
+    [itemDisplayName],
+  )
 
   const apiBase = useMemo(() => resolveApiBase(), [])
+
+  useEffect(() => {
+    if (!apiBase) return
+    void fetch(`${apiBase}/health`)
+      .then((r) => r.json())
+      .then((h: { interpretAvailable?: boolean }) => setInterpretAvailable(!!h.interpretAvailable))
+      .catch(() => setInterpretAvailable(false))
+  }, [apiBase])
+
+  const simpleItemFormOk = useMemo(() => {
+    if (!simpleItemEnabled) return true
+    if (!itemIdOk) return false
+    if (itemId === modId) return false
+    if (!itemDisplayOk) return false
+    return true
+  }, [simpleItemEnabled, itemIdOk, itemId, modId, itemDisplayOk])
 
   const canGenerate = useMemo(() => {
     if (!apiBase) return false
     if (!modIdOk) return false
+    if (!simpleItemFormOk) return false
     if (loader !== 'fabric') return false
     if (buildPhase === 'queued' || buildPhase === 'running') return false
     return true
-  }, [apiBase, modIdOk, loader, mcVersion, buildPhase])
+  }, [apiBase, modIdOk, simpleItemFormOk, loader, buildPhase])
 
   const pollJob = useCallback(
     async (id: string) => {
@@ -79,10 +125,19 @@ export default function App() {
         const j = (await r.json()) as {
           status: string
           error?: string | null
+          spec?: {
+            wishText?: string | null
+            features?: SimpleItemFeature[]
+          } | null
         }
         if (j.status === 'done') {
           setBuildPhase('done')
-          setBuildMessage('Valmis! Lataa .jar alla.')
+          const w = j.spec?.wishText?.trim()
+          setBuildMessage(
+            w
+              ? `Valmis! Lataa .jar alla. (toive tallessa: ${w.slice(0, 80)}${w.length > 80 ? '…' : ''})`
+              : 'Valmis! Lataa .jar alla.',
+          )
           return
         }
         if (j.status === 'error') {
@@ -97,6 +152,83 @@ export default function App() {
     },
     [apiBase],
   )
+
+  const applyInterpretDraft = useCallback((draft: InterpretDraft) => {
+    if (MC_VERSIONS.includes(draft.minecraftVersion as (typeof MC_VERSIONS)[number])) {
+      setMcVersion(draft.minecraftVersion as (typeof MC_VERSIONS)[number])
+    }
+    setLoader(draft.loader)
+    setModId(draft.modId)
+    setDisplayName(draft.displayName)
+    setWishText(draft.wishText)
+    const firstItem = draft.features.find((f) => f.type === 'simple_item')
+    if (firstItem) {
+      setSimpleItemEnabled(true)
+      setItemId(firstItem.itemId)
+      setItemDisplayName(firstItem.displayName)
+    } else {
+      setSimpleItemEnabled(false)
+      setItemId('')
+      setItemDisplayName('')
+    }
+    setInterpretMessage('Ehdotus yhdistetty lomakkeeseen.')
+  }, [])
+
+  const handleInterpret = async () => {
+    setInterpretMessage(null)
+    setInterpretDraft(null)
+    if (!apiBase) {
+      setInterpretPhase('error')
+      setInterpretMessage('API-osoite puuttuu.')
+      return
+    }
+    const w = wishText.trim()
+    if (!w) {
+      setInterpretPhase('error')
+      setInterpretMessage('Kirjoita ensin toive tekstikenttään.')
+      return
+    }
+    if (!interpretAvailable) {
+      setInterpretPhase('error')
+      setInterpretMessage('Tulkinta ei ole käytössä tällä palvelimella (OPENAI_API_KEY).')
+      return
+    }
+
+    setInterpretPhase('loading')
+    try {
+      const r = await fetch(`${apiBase}/v1/interpret`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wishText: w,
+          loader,
+          minecraftVersion: mcVersion,
+          modIdHint: modId,
+          displayNameHint: displayName.trim(),
+        }),
+      })
+      const data = (await r.json().catch(() => ({}))) as {
+        draft?: InterpretDraft
+        error?: string
+      }
+      if (!r.ok) {
+        setInterpretPhase('error')
+        setInterpretMessage(data.error ?? `Virhe ${r.status}`)
+        return
+      }
+      if (!data.draft) {
+        setInterpretPhase('error')
+        setInterpretMessage('Palvelin ei palauttanut luonnosta.')
+        return
+      }
+      setInterpretDraft(data.draft)
+      setInterpretPhase('done')
+      setInterpretMessage(null)
+    } catch {
+      setInterpretPhase('error')
+      setInterpretMessage('Verkkovirhe — tarkista API.')
+    }
+  }
 
   const handleGenerate = async () => {
     setBuildMessage(null)
@@ -115,6 +247,11 @@ export default function App() {
     setBuildMessage('Jonossa…')
 
     try {
+      const features: SimpleItemFeature[] | undefined =
+        simpleItemEnabled && itemIdOk && itemId !== modId && itemDisplayOk
+          ? [{ type: 'simple_item', itemId, displayName: itemDisplayName.trim() }]
+          : undefined
+
       const r = await fetch(`${apiBase}/v1/build`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -124,6 +261,7 @@ export default function App() {
           modId,
           displayName: displayName.trim(),
           wishText: wishText.trim() || undefined,
+          features,
         }),
       })
 
@@ -283,7 +421,7 @@ export default function App() {
 
             <div className="mc-row">
               <label className="mc-label" htmlFor="wish">
-                Kerro omin sanoin (tulossa)
+                Kerro omin sanoin
               </label>
               <textarea
                 id="wish"
@@ -294,9 +432,123 @@ export default function App() {
                 maxLength={2000}
               />
               <p className="mc-hint">
-                Myöhemmin tästä tehdään automaattinen ehdotus — nyt voit vain kirjoittaa idean
-                talteen.
+                Toive tallennetaan työhön ja näkyy loki-/tilatiedoissa. Voit pyytää tekoälyltä
+                ehdotuksen lomakkeelle — tarkista aina ennen generointia.
               </p>
+              <div className="mc-loader-row" style={{ marginTop: '0.5rem' }}>
+                <button
+                  type="button"
+                  className={`mc-loader-btn${interpretPhase === 'loading' ? ' is-on' : ''}`}
+                  disabled={
+                    !apiBase ||
+                    interpretPhase === 'loading' ||
+                    !wishText.trim() ||
+                    !interpretAvailable
+                  }
+                  onClick={() => void handleInterpret()}
+                >
+                  Tulkitsi tekstistä
+                </button>
+                {!interpretAvailable && apiBase ? (
+                  <span className="mc-hint" style={{ margin: 0 }}>
+                    Tulkinta vaatii OPENAI_API_KEY palvelimella.
+                  </span>
+                ) : null}
+              </div>
+              {interpretMessage ? (
+                <p className="mc-hint" style={{ marginTop: '0.35rem' }}>
+                  {interpretMessage}
+                </p>
+              ) : null}
+              {interpretDraft && interpretPhase === 'done' ? (
+                <div
+                  className="mc-panel-inner"
+                  style={{
+                    marginTop: '0.75rem',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: 6,
+                    padding: '0.65rem 0.75rem',
+                  }}
+                >
+                  <p className="mc-hint" style={{ marginTop: 0 }}>
+                    Tulkinta
+                    {interpretDraft.wishSummary ? ` — ${interpretDraft.wishSummary}` : ''}
+                  </p>
+                  {interpretDraft.warnings && interpretDraft.warnings.length > 0 ? (
+                    <ul className="mc-hint" style={{ margin: '0.35rem 0 0 1rem' }}>
+                      {interpretDraft.warnings.map((w, i) => (
+                        <li key={i}>{w}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  <p className="mc-hint" style={{ marginBottom: '0.5rem' }}>
+                    Mod: <code>{interpretDraft.modId}</code> · {interpretDraft.displayName} · MC{' '}
+                    {interpretDraft.minecraftVersion}
+                    {interpretDraft.features.some((f) => f.type === 'simple_item')
+                      ? ' · esine-ehdotus'
+                      : ''}
+                  </p>
+                  <button
+                    type="button"
+                    className="mc-loader-btn is-on"
+                    onClick={() => applyInterpretDraft(interpretDraft)}
+                  >
+                    Käytä ehdotusta
+                  </button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="mc-row">
+              <label className="mc-label" htmlFor="simple-item">
+                Yksinkertainen esine (Fabric)
+              </label>
+              <div className="mc-loader-row" role="group" aria-label="Esine">
+                <button
+                  type="button"
+                  className={`mc-loader-btn${simpleItemEnabled ? ' is-on' : ''}`}
+                  onClick={() => setSimpleItemEnabled((v) => !v)}
+                >
+                  {simpleItemEnabled ? 'Käytössä' : 'Ei käytössä'}
+                </button>
+              </div>
+              {simpleItemEnabled ? (
+                <>
+                  <label className="mc-label" htmlFor="item-id" style={{ marginTop: '0.5rem' }}>
+                    Esineen tunnus (item id)
+                  </label>
+                  <input
+                    id="item-id"
+                    className="mc-input"
+                    value={itemId}
+                    onChange={(e) =>
+                      setItemId(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                    }
+                    autoComplete="off"
+                    spellCheck={false}
+                    maxLength={41}
+                  />
+                  <label className="mc-label" htmlFor="item-name">
+                    Esineen nimi (lokissa)
+                  </label>
+                  <input
+                    id="item-name"
+                    className="mc-input"
+                    value={itemDisplayName}
+                    onChange={(e) => setItemDisplayName(e.target.value)}
+                    maxLength={64}
+                  />
+                  <p className="mc-hint">
+                    Esine rekisteröidään modisi alle. Tarkista että id ei ole sama kuin modin id (
+                    <code>{modId || '…'}</code>).{' '}
+                    {!itemIdOk && itemId ? 'Tarkista esine-id.' : ''}
+                    {itemIdOk && itemId === modId ? 'Esine-id ei saa olla sama kuin modin id.' : ''}
+                    {simpleItemEnabled && !itemDisplayOk ? 'Anna esineelle nimi.' : ''}
+                  </p>
+                </>
+              ) : (
+                <p className="mc-hint">Lisää yksi tavallinen esine ilman tekstuureja (testi).</p>
+              )}
             </div>
 
             <div className="mc-actions">

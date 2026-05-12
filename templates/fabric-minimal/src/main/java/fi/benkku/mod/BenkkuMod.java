@@ -11,5 +11,6 @@ public class BenkkuMod implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		LOGGER.info("Benkku mod '{}' initialized.", MOD_ID);
+		ModFeatures.register();
 	}
 }
