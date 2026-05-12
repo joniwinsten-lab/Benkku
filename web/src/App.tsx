@@ -23,6 +23,23 @@ function parseFilenameFromDisposition(header: string | null): string | null {
   return m?.[1] ?? null
 }
 
+function resolveApiBase(): string {
+  const raw = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/$/, '')
+  if (raw) {
+    if (raw.startsWith('/')) {
+      if (typeof window !== 'undefined' && window.location?.origin) {
+        return `${window.location.origin}${raw}`
+      }
+      return raw
+    }
+    return raw
+  }
+  if (typeof window !== 'undefined' && window.location?.hostname === '94.237.38.55') {
+    return `${window.location.origin}/benkku-api`
+  }
+  return ''
+}
+
 export default function App() {
   const [splash] = useState(pickSplash)
   const [mcVersion, setMcVersion] = useState<(typeof MC_VERSIONS)[number]>('1.21')
@@ -39,7 +56,7 @@ export default function App() {
 
   const modIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,63}$/.test(modId), [modId])
 
-  const apiBase = (import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
+  const apiBase = useMemo(() => resolveApiBase(), [])
 
   const canGenerate = useMemo(() => {
     if (!apiBase) return false
