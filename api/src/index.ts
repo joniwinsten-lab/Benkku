@@ -2,6 +2,7 @@ import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { randomUUID } from 'node:crypto'
+import { SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
 import { ModSpecSchema, validateModSpecForBuild } from './modspec.js'
 import { runFabricBuild } from './worker.js'
 
@@ -47,7 +48,9 @@ app.use(
   }),
 )
 
-app.get('/health', (c) => c.json({ ok: true }))
+app.get('/health', (c) =>
+  c.json({ ok: true, fabricMinecraft: SUPPORTED_MINECRAFT_VERSIONS }),
+)
 
 app.post('/v1/build', async (c) => {
   let body: unknown

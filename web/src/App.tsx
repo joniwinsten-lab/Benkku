@@ -2,8 +2,8 @@ import { useCallback, useMemo, useState } from 'react'
 
 type Loader = 'fabric' | 'forge'
 
-/** Template + API tukevat tällä hetkellä vain tätä yhdistelmää */
-const MC_VERSIONS = ['1.21'] as const
+/** Fabric-generointi — pitää olla synkassa API:n `fabricVersions.ts` kanssa */
+const MC_VERSIONS = ['1.21.1', '1.21', '1.20.4', '1.20.1'] as const
 
 const SPLASHES = [
   'Koodi kuten kivi!',
@@ -42,7 +42,7 @@ function resolveApiBase(): string {
 
 export default function App() {
   const [splash] = useState(pickSplash)
-  const [mcVersion, setMcVersion] = useState<(typeof MC_VERSIONS)[number]>('1.21')
+  const [mcVersion, setMcVersion] = useState<(typeof MC_VERSIONS)[number]>('1.21.1')
   const [loader, setLoader] = useState<Loader>('fabric')
   const [modId, setModId] = useState('benkku_mod')
   const [displayName, setDisplayName] = useState('Benkun modi')
@@ -62,7 +62,6 @@ export default function App() {
     if (!apiBase) return false
     if (!modIdOk) return false
     if (loader !== 'fabric') return false
-    if (mcVersion !== '1.21') return false
     if (buildPhase === 'queued' || buildPhase === 'running') return false
     return true
   }, [apiBase, modIdOk, loader, mcVersion, buildPhase])
@@ -216,12 +215,13 @@ export default function App() {
               >
                 {MC_VERSIONS.map((v) => (
                   <option key={v} value={v}>
-                    {v} (Fabric, generointi)
+                    {v}
                   </option>
                 ))}
               </select>
               <p className="mc-hint">
-                Valitse sama pääversio kuin launcherissa. Lisää versioita tulee myöhemmin.
+                Valitse sama Minecraft-versio kuin Fabric-asennuksessasi. Tuetut versiot:{' '}
+                {MC_VERSIONS.join(', ')}.
               </p>
             </div>
 

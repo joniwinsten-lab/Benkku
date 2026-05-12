@@ -1,6 +1,6 @@
 # Benkku
 
-Minecraft **Java Edition** -modigeneraattori: **React-käyttöliittymä** (`web/`) ja **build-API** (`api/`), joka kääntää **Fabric**-modin valmiista pohjasta (`templates/fabric-1.21-minimal/`). Teema on Minecraft-henkinä (ei Mojangin grafiikkaa).
+Minecraft **Java Edition** -modigeneraattori: **React-käyttöliittymä** (`web/`) ja **build-API** (`api/`), joka kääntää **Fabric**-modin valmiista pohjasta (`templates/fabric-minimal/`). Teema on Minecraft-henkinä (ei Mojangin grafiikkaa).
 
 - **Repo:** [github.com/joniwinsten-lab/Benkku](https://github.com/joniwinsten-lab/Benkku)
 - **GitHub Pages:** [joniwinsten-lab.github.io/Benkku/](https://joniwinsten-lab.github.io/Benkku/)
@@ -36,11 +36,11 @@ npm run dev
 
 Oletusportti: **8787**. Terveys: `GET http://127.0.0.1:8787/health`.
 
-- `POST /v1/build` — JSON: `{ "loader": "fabric", "minecraftVersion": "1.21", "modId": "benkku_mod", "displayName": "Benkun modi" }` → palauttaa `{ "jobId": "..." }` (HTTP 202).
+- `POST /v1/build` — JSON: `{ "loader": "fabric", "minecraftVersion": "1.21.1", "modId": "benkku_mod", "displayName": "Benkun modi" }` → palauttaa `{ "jobId": "..." }` (HTTP 202).
 - `GET /v1/build/:id` — tila ja lokitail.
 - `GET /v1/build/:id/jar` — valmis `.jar` (kun tila on `done`).
 
-**Tuki tällä hetkellä:** vain **Fabric** + Minecraft **1.21**. Forge ja muut versiot tulossa.
+**Tuki tällä hetkellä:** **Fabric** ja Minecraft **1.21.1, 1.21, 1.20.4, 1.20.1** (katso `api/src/fabricVersions.ts`). Forge tulossa.
 
 **CORS:** aseta ympäristömuuttuja `CORS_ORIGINS` pilkuilla eroteltuina sallituiksi origeiksi, esim. `http://127.0.0.1:5173,https://joniwinsten-lab.github.io`.
 
@@ -54,7 +54,7 @@ npm install
 npm run dev
 ```
 
-GitHub Pages -buildiin voit upottaa julkisen API-osoitteen: repossa **Settings → Secrets and variables → Actions** → lisää salaisuus **`VITE_API_URL`** (esim. `https://oma-api.example.com`). Workflow välittää sen Vite-buildille.
+GitHub Pages -buildi on valinnainen (sivu voi pyöriä vain omalla palvelimella). Jos käytät Pagesia, repossa **Settings → Secrets and variables → Actions** → **`VITE_API_URL`** (HTTPS-API, jotta selain ei estä mixed content -kutsuja).
 
 ## Kehitys (vain UI, staattinen build)
 
@@ -71,5 +71,5 @@ VITE_BASE_PATH=/Benkku/ npm run build
 
 1. Avaa GitHub Pages -linkki (tai paikallinen dev, jos käytät sitä).
 2. Varmista, että **VITE_API_URL** on asetettu (tuotannossa repo secret), jotta **Generoi .jar** ei ole harmaana.
-3. Valitse **Minecraft 1.21** ja **Fabric** (kuten launcherissa).
+3. Valitse **Minecraft-versio** (1.21.1, 1.21, 1.20.4 tai 1.20.1) ja **Fabric** kuten launcherissa.
 4. Lataa `.jar` ja kopioi `%appdata%\.minecraft\mods` (tai Prism-instanssin `mods`).

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { getFabricProfile, SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
 
 /** Request body for POST /v1/build */
 export const ModSpecSchema = z.object({
@@ -15,8 +16,8 @@ export function validateModSpecForBuild(spec: ModSpec): string | null {
   if (spec.loader !== 'fabric') {
     return 'Tällä hetkellä vain Fabric-tuki. Forge tulossa myöhemmin.'
   }
-  if (spec.minecraftVersion !== '1.21') {
-    return 'Tällä hetkellä vain Minecraft 1.21 (Fabric). Muut versiot tulossa.'
+  if (!getFabricProfile(spec.minecraftVersion)) {
+    return `Tuetut Minecraft-versiot (Fabric): ${SUPPORTED_MINECRAFT_VERSIONS.join(', ')}.`
   }
   return null
 }
