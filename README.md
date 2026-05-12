@@ -4,6 +4,24 @@ Minecraft **Java Edition** -modigeneraattori: **React-käyttöliittymä** (`web/
 
 - **Repo:** [github.com/joniwinsten-lab/Benkku](https://github.com/joniwinsten-lab/Benkku)
 - **GitHub Pages:** [joniwinsten-lab.github.io/Benkku/](https://joniwinsten-lab.github.io/Benkku/)
+- **Sindbad-staging (HTTP, sama origin):** [http://94.237.38.55/benkku/](http://94.237.38.55/benkku/) — UI + API (`/benkku-api/`), toimii ilman erillistä `VITE_API_URL`-asetusta.
+
+## Sindbad-staging -palvelin (94.237.38.55)
+
+Asennettu erillisinä polkuina, jotta **Next-sivu** (`/`) ja **Odoo** (`/web`, …) eivät muutu:
+
+| Polku | Tarkoitus |
+|--------|------------|
+| `/benkku/` | Staattinen React-build (`/var/www/benkku/`) |
+| `/benkku-api/` | Nginx välittää → `127.0.0.1:8787` (Node API) |
+
+- **Käyttäjä:** `benkku`, kotihakemisto `/opt/benkku`, repo: `/opt/benkku/app` (git clone).
+- **systemd:** `benkku-api.service` — `systemctl status benkku-api`, lokit: `journalctl -u benkku-api -f`.
+- **Päivitys:** `sudo -u benkku git -C /opt/benkku/app pull` ja `sudo -u benkku bash -c 'cd /opt/benkku/app/api && npm ci && npm run build'`, sitten `systemctl restart benkku-api`. UI: `rsync` tai buildaa `VITE_BASE_PATH=/benkku/` ja kopioi `dist/` → `/var/www/benkku/`.
+
+**GitHub Pages ja HTTPS:** selaimet estävät usein `fetch`-kutsun **HTTP**-API:in osoitteesta, jos sivu on **HTTPS** (`*.github.io`). Siksi GitHub Pages -sivu ei välttämättä toimi suoraan tämän palvelimen **HTTP**-API:in kanssa, ennen kuin API:lla on **HTTPS** (esim. Let’s Encrypt + oma hostnimi). Käytä silloin osoitetta `https://api.sinun.domaini/benkku-api` ja aseta repo secret **`VITE_API_URL`** siihen. Täydellinen UI+API **HTTP**-versiona: linkki yllä `/benkku/`.
+
+Tarkempi nginx/systemd-viite: [docs/DEPLOY-SINDBAD-STAGING.md](docs/DEPLOY-SINDBAD-STAGING.md).
 
 ## Build-API (paikallinen)
 
