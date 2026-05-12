@@ -1,19 +1,44 @@
 # Benkku
 
-Minecraft **Java Edition** -modigeneraattorin käyttöliittymä (Vite + React). Teema on Minecraft-henkinä (ei Mojangin grafiikkaa).
+Minecraft **Java Edition** -modigeneraattori: **React-käyttöliittymä** (`web/`) ja **build-API** (`api/`), joka kääntää **Fabric**-modin valmiista pohjasta (`templates/fabric-1.21-minimal/`). Teema on Minecraft-henkinä (ei Mojangin grafiikkaa).
 
 - **Repo:** [github.com/joniwinsten-lab/Benkku](https://github.com/joniwinsten-lab/Benkku)
-- **GitHub Pages (kun workflow on ajettu):** [joniwinsten-lab.github.io/Benkku/](https://joniwinsten-lab.github.io/Benkku/)
+- **GitHub Pages:** [joniwinsten-lab.github.io/Benkku/](https://joniwinsten-lab.github.io/Benkku/)
 
-## Kehitys
+## Build-API (paikallinen)
+
+Palvelin tarvitsee **JDK 21+** ja **Gradle-wrapperin** mukana tulevan `./gradlew`-komennon (kopioi pohja väliaikaiseen hakemistoon ja ajaa buildin).
+
+```bash
+cd api
+npm install
+npm run dev
+# tai: npm run build && npm start
+```
+
+Oletusportti: **8787**. Terveys: `GET http://127.0.0.1:8787/health`.
+
+- `POST /v1/build` — JSON: `{ "loader": "fabric", "minecraftVersion": "1.21", "modId": "benkku_mod", "displayName": "Benkun modi" }` → palauttaa `{ "jobId": "..." }` (HTTP 202).
+- `GET /v1/build/:id` — tila ja lokitail.
+- `GET /v1/build/:id/jar` — valmis `.jar` (kun tila on `done`).
+
+**Tuki tällä hetkellä:** vain **Fabric** + Minecraft **1.21**. Forge ja muut versiot tulossa.
+
+**CORS:** aseta ympäristömuuttuja `CORS_ORIGINS` pilkuilla eroteltuina sallituiksi origeiksi, esim. `http://127.0.0.1:5173,https://joniwinsten-lab.github.io`.
+
+## Käyttöliittymä (web)
 
 ```bash
 cd web
+cp .env.example .env
+# Muokkaa .env: VITE_API_URL=http://127.0.0.1:8787
 npm install
 npm run dev
 ```
 
-Tuotantoversio GitHub Pagesille (polku vastaa repon nimeä):
+GitHub Pages -buildiin voit upottaa julkisen API-osoitteen: repossa **Settings → Secrets and variables → Actions** → lisää salaisuus **`VITE_API_URL`** (esim. `https://oma-api.example.com`). Workflow välittää sen Vite-buildille.
+
+## Kehitys (vain UI, staattinen build)
 
 ```bash
 cd web
@@ -22,14 +47,11 @@ VITE_BASE_PATH=/Benkku/ npm run build
 
 ## Julkaisu (GitHub Pages)
 
-Repossa **Settings → Pages**: **Build and deployment** → Source = **GitHub Actions**. Ensimmäisellä kerralla GitHub saattaa pyytää hyväksymään **github-pages**-ympäristön workflow-runista.
-
-Workflow **Deploy GitHub Pages** rakentaa `web/`-hakemiston ja julkaisee `dist`-kansion osoitteeseen `https://joniwinsten-lab.github.io/Benkku/`.
+**Settings → Pages:** Source = **GitHub Actions**. Workflow **Deploy GitHub Pages** julkaisee `web/dist`.
 
 ## Benkulle (Windows)
 
-1. Avaa yllä oleva GitHub Pages -linkki selaimessa.
-2. Valitse sama Minecraft-versio ja Fabric tai Forge kuin launcherissa.
-3. Kun **Generoi .jar** tulee käyttöön, lataa tiedosto ja kopioi se kansioon `%appdata%\.minecraft\mods` (tai Prism Launcher -instanssin `mods`-kansioon).
-
-Modin generointi-palvelin (API) on erillinen työ — tämä repo sisältää toistaiseksi vain käyttöliittymän.
+1. Avaa GitHub Pages -linkki (tai paikallinen dev, jos käytät sitä).
+2. Varmista, että **VITE_API_URL** on asetettu (tuotannossa repo secret), jotta **Generoi .jar** ei ole harmaana.
+3. Valitse **Minecraft 1.21** ja **Fabric** (kuten launcherissa).
+4. Lataa `.jar` ja kopioi `%appdata%\.minecraft\mods` (tai Prism-instanssin `mods`).
