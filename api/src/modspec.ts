@@ -9,9 +9,23 @@ export const SimpleItemFeatureSchema = z.object({
 
 export type SimpleItemFeature = z.infer<typeof SimpleItemFeatureSchema>
 
-/** Tulevaisuudessa useita tyyppejä — toistaiseksi vain simple_item. */
-export const ModFeatureSchema = SimpleItemFeatureSchema
-export type ModFeature = SimpleItemFeature
+export const ArmorSlotSchema = z.enum(['helmet', 'chestplate', 'leggings', 'boots'])
+
+export const SimpleArmorFeatureSchema = z.object({
+  type: z.literal('simple_armor'),
+  armorId: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
+  displayName: z.string().trim().min(1).max(64),
+  slot: ArmorSlotSchema,
+})
+
+export type SimpleArmorFeature = z.infer<typeof SimpleArmorFeatureSchema>
+
+export const ModFeatureSchema = z.discriminatedUnion('type', [
+  SimpleItemFeatureSchema,
+  SimpleArmorFeatureSchema,
+])
+
+export type ModFeature = z.infer<typeof ModFeatureSchema>
 
 /** Request body for POST /v1/build */
 export const ModSpecSchema = z.object({
@@ -35,16 +49,31 @@ export function validateModSpecForBuild(spec: ModSpec): string | null {
   }
 
   const feats = spec.features ?? []
-  const simple = feats.filter((f) => f.type === 'simple_item')
   const ids = new Set<string>()
-  for (const f of simple) {
-    if (f.itemId === spec.modId) {
-      return `Esineen id "${f.itemId}" ei saa olla sama kuin modin id.`
+  const armorSlots = new Set<string>()
+
+  for (const f of feats) {
+    if (f.type === 'simple_item') {
+      if (f.itemId === spec.modId) {
+        return `Esineen id "${f.itemId}" ei saa olla sama kuin modin id.`
+      }
+      if (ids.has(f.itemId)) {
+        return `Toistuva id: ${f.itemId}`
+      }
+      ids.add(f.itemId)
+    } else {
+      if (f.armorId === spec.modId) {
+        return `Armor-id "${f.armorId}" ei saa olla sama kuin modin id.`
+      }
+      if (ids.has(f.armorId)) {
+        return `Toistuva id: ${f.armorId}`
+      }
+      ids.add(f.armorId)
+      if (armorSlots.has(f.slot)) {
+        return `Sama armor-slot kahdesti: ${f.slot}`
+      }
+      armorSlots.add(f.slot)
     }
-    if (ids.has(f.itemId)) {
-      return `Toistuva esine-id: ${f.itemId}`
-    }
-    ids.add(f.itemId)
   }
 
   return null

@@ -1,6 +1,6 @@
 package fi.benkku.mod;
 
-/** Rekisteröidään rakennuksen aikana generoitu koodi (simple_item jne.). */
+/** Rekisteröidään rakennuksen aikana generoitu koodi (simple_item, simple_armor, …). */
 public final class ModFeatures {
 	private ModFeatures() {}
 

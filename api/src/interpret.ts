@@ -47,13 +47,13 @@ Pakolliset avaimet: loader, minecraftVersion, modId, displayName, wishText, feat
 Valinnaiset: wishSummary (string), warnings (string[]).
 
 Säännöt:
-- Tuote on kapea: vain tavaraesineet (nyt) ja tulevaisuudessa armor-varusteet — ei blokkeja, biomeja, bosseja tms. Jos käyttäjä pyytää armorista, warnings: lyhyt huomio että armor-generointi ei ole vielä käytössä; features jää [] ellei samaan toiveeseen sopii tavaraesine.
+- Tuote: vain tavaraesineet (simple_item) ja armor (simple_armor). Ei blokkeja, biomeja, bosseja tms.
 - loader: käytä aina "fabric" ellei käyttäjä nimenomaan pyydä forgea.
 - minecraftVersion: täsmälleen yksi näistä: ${SUPPORTED_MINECRAFT_VERSIONS.join(', ')} — oletus 1.21.1 jos epäselvä.
 - modId: vain pienet kirjaimet, numerot ja alaviiva, alkaa kirjaimella.
 - displayName: lyhyt näyttönimi suomeksi tai englanniksi.
 - wishText: lyhennä käyttäjän toive max 2000 merkkiin; säilytä idea.
-- features: jos käyttäjä haluaa uuden esineen, lisää { "type":"simple_item", "itemId": "...", "displayName":"..." }. itemId eri kuin modId. Max 3 esinettä. Muuten [].
+- features: max 5 kohdetta. Tavara: { "type":"simple_item", "itemId": "...", "displayName":"..." } (itemId eri kuin modId). Armor: { "type":"simple_armor", "armorId": "...", "displayName":"...", "slot": "helmet"|"chestplate"|"leggings"|"boots" } (armorId eri kuin modId; sama slot vain kerran). Käytä LEATHER-tason geneeristä armor-ideaa; ei omaa tekstuuria.
 - wishSummary: 1-2 lausetta suomeksi mitä ymmärsit.
 - warnings: epäselvät kohdat (tyhjä taulukko jos ei huomioitavaa).`
 

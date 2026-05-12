@@ -25,13 +25,24 @@ function parseFilenameFromDisposition(header: string | null): string | null {
 
 type SimpleItemFeature = { type: 'simple_item'; itemId: string; displayName: string }
 
+type ArmorSlot = 'helmet' | 'chestplate' | 'leggings' | 'boots'
+
+type SimpleArmorFeature = {
+  type: 'simple_armor'
+  armorId: string
+  displayName: string
+  slot: ArmorSlot
+}
+
+type ModFeature = SimpleItemFeature | SimpleArmorFeature
+
 type InterpretDraft = {
   loader: Loader
   minecraftVersion: string
   modId: string
   displayName: string
   wishText: string
-  features: SimpleItemFeature[]
+  features: ModFeature[]
 }
 
 function resolveApiBase(): string {
@@ -64,6 +75,11 @@ export default function App() {
   const [itemId, setItemId] = useState('')
   const [itemDisplayName, setItemDisplayName] = useState('')
 
+  const [simpleArmorEnabled, setSimpleArmorEnabled] = useState(false)
+  const [armorId, setArmorId] = useState('')
+  const [armorDisplayName, setArmorDisplayName] = useState('')
+  const [armorSlot, setArmorSlot] = useState<ArmorSlot>('helmet')
+
   const [interpretAvailable, setInterpretAvailable] = useState(false)
 
   const [buildPhase, setBuildPhase] = useState<'idle' | 'queued' | 'running' | 'done' | 'error'>(
@@ -74,9 +90,14 @@ export default function App() {
 
   const modIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,63}$/.test(modId), [modId])
   const itemIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,40}$/.test(itemId), [itemId])
+  const armorIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,40}$/.test(armorId), [armorId])
   const itemDisplayOk = useMemo(
     () => itemDisplayName.trim().length >= 1 && itemDisplayName.trim().length <= 64,
     [itemDisplayName],
+  )
+  const armorDisplayOk = useMemo(
+    () => armorDisplayName.trim().length >= 1 && armorDisplayName.trim().length <= 64,
+    [armorDisplayName],
   )
 
   const apiBase = useMemo(() => resolveApiBase(), [])
@@ -97,13 +118,22 @@ export default function App() {
     return true
   }, [simpleItemEnabled, itemIdOk, itemId, modId, itemDisplayOk])
 
+  const simpleArmorFormOk = useMemo(() => {
+    if (!simpleArmorEnabled) return true
+    if (!armorIdOk) return false
+    if (armorId === modId) return false
+    if (!armorDisplayOk) return false
+    return true
+  }, [simpleArmorEnabled, armorIdOk, armorId, modId, armorDisplayOk])
+
   const canGenerate = useMemo(() => {
     if (!apiBase) return false
     if (!modIdOk) return false
     if (!simpleItemFormOk) return false
+    if (!simpleArmorFormOk) return false
     if (buildPhase === 'queued' || buildPhase === 'running') return false
     return true
-  }, [apiBase, modIdOk, simpleItemFormOk, buildPhase])
+  }, [apiBase, modIdOk, simpleItemFormOk, simpleArmorFormOk, buildPhase])
 
   const pollJob = useCallback(
     async (id: string) => {
@@ -161,10 +191,20 @@ export default function App() {
     let useDisplay = displayName.trim()
     let useMc = mcVersion
     let useWish: string | undefined = wish || undefined
-    let useFeatures: SimpleItemFeature[] | undefined =
-      simpleItemEnabled && itemIdOk && itemId !== modId && itemDisplayOk
-        ? [{ type: 'simple_item', itemId, displayName: itemDisplayName.trim() }]
-        : undefined
+    const manualFeatures: ModFeature[] = []
+    if (simpleItemEnabled && itemIdOk && itemId !== modId && itemDisplayOk) {
+      manualFeatures.push({ type: 'simple_item', itemId, displayName: itemDisplayName.trim() })
+    }
+    if (simpleArmorEnabled && armorIdOk && armorId !== modId && armorDisplayOk) {
+      manualFeatures.push({
+        type: 'simple_armor',
+        armorId,
+        displayName: armorDisplayName.trim(),
+        slot: armorSlot,
+      })
+    }
+    let useFeatures: ModFeature[] | undefined =
+      manualFeatures.length > 0 ? manualFeatures : undefined
 
     if (wish && interpretAvailable) {
       setBuildPhase('queued')
@@ -199,19 +239,32 @@ export default function App() {
           useMc = d.minecraftVersion as (typeof MC_VERSIONS)[number]
         }
         useWish = d.wishText.trim() || wish
-        const fromAi = d.features?.filter((f) => f.type === 'simple_item') ?? []
+        const fromAi = d.features ?? []
         if (fromAi.length > 0) {
           useFeatures = fromAi
         }
-        /* muuten säilytetään käsin valittu esine (tarkemmat asetukset), jos tulkinnassa ei esinettä */
         setModId(useModId)
         setDisplayName(useDisplay)
         setMcVersion(useMc)
         setWishText(useWish)
-        if (fromAi[0]) {
-          setSimpleItemEnabled(true)
-          setItemId(fromAi[0].itemId)
-          setItemDisplayName(fromAi[0].displayName)
+        setSimpleItemEnabled(false)
+        setSimpleArmorEnabled(false)
+        let setItem = false
+        let setArmor = false
+        for (const f of fromAi) {
+          if (f.type === 'simple_item' && !setItem) {
+            setItem = true
+            setSimpleItemEnabled(true)
+            setItemId(f.itemId)
+            setItemDisplayName(f.displayName)
+          }
+          if (f.type === 'simple_armor' && !setArmor) {
+            setArmor = true
+            setSimpleArmorEnabled(true)
+            setArmorId(f.armorId)
+            setArmorDisplayName(f.displayName)
+            setArmorSlot(f.slot)
+          }
         }
       } catch {
         setBuildPhase('error')
@@ -337,18 +390,9 @@ export default function App() {
                   MC-versio + Fabric).
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Yksi tai useampi yksinkertainen esine (tavara): nimi ja tunniste voidaan poimia
-                  toiveesta. Ulkonäkö on geneerinen (ei omaa piirrettyä tekstuuria).
-                </li>
-              </ul>
-              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
-                Tulossa seuraavaksi
-              </h3>
-              <ul className="mc-hint" style={{ margin: '0.35rem 0 0.85rem 1.1rem', padding: 0 }}>
-                <li style={{ marginBottom: '0.35rem' }}>
-                  Armor-varusteet (esim. kypärä tai setti) samaan generointiin — vaatii vielä
-                  koodin ja resurssien tuen; toiveissa voi jo kuvailla varusteita, mutta buildiin
-                  tulee toistaiseksi vain tavaraesineitä.
+                  Yksi tai useampi yksinkertainen tavaraesine tai armor-pala (kypärä, rintapanssari,
+                  housut, saappaat): tunnisteet ja nimet voidaan poimia toiveesta. Materiaali on
+                  keinonahka (LEATHER) ja ulkonäkö geneerinen (ei omaa piirrettyä tekstuuria).
                 </li>
               </ul>
               <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
@@ -386,7 +430,7 @@ export default function App() {
                 className="mc-textarea"
                 value={wishText}
                 onChange={(e) => setWishText(e.target.value)}
-                placeholder="Esim. haluan pienen modin jossa on punainen omena-esine ja nimi Olipa kerran…"
+                placeholder="Esim. haluan nahkaisen kypärän ja omenan tavaraluetteloon, modin nimeksi Olipa kerran…"
                 maxLength={2000}
               />
               <p className="mc-hint">
@@ -521,6 +565,73 @@ export default function App() {
                     </>
                   ) : (
                     <p className="mc-hint">Voit lisätä yhden tavallisen esineen ilman tekstuureja.</p>
+                  )}
+                </div>
+
+                <div className="mc-row">
+                  <span className="mc-label">Lisä: yksinkertainen armor</span>
+                  <div className="mc-loader-row" role="group" aria-label="Armor">
+                    <button
+                      type="button"
+                      className={`mc-loader-btn${simpleArmorEnabled ? ' is-on' : ''}`}
+                      onClick={() => setSimpleArmorEnabled((v) => !v)}
+                    >
+                      {simpleArmorEnabled ? 'Käytössä' : 'Ei käytössä'}
+                    </button>
+                  </div>
+                  {simpleArmorEnabled ? (
+                    <>
+                      <label className="mc-label" htmlFor="armor-slot" style={{ marginTop: '0.5rem' }}>
+                        Armor-slot
+                      </label>
+                      <select
+                        id="armor-slot"
+                        className="mc-select"
+                        value={armorSlot}
+                        onChange={(e) => setArmorSlot(e.target.value as ArmorSlot)}
+                      >
+                        <option value="helmet">Kypärä</option>
+                        <option value="chestplate">Rintapanssari</option>
+                        <option value="leggings">Housut</option>
+                        <option value="boots">Saappaat</option>
+                      </select>
+                      <label className="mc-label" htmlFor="armor-id">
+                        Armor-tunnus
+                      </label>
+                      <input
+                        id="armor-id"
+                        className="mc-input"
+                        value={armorId}
+                        onChange={(e) =>
+                          setArmorId(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))
+                        }
+                        autoComplete="off"
+                        spellCheck={false}
+                        maxLength={41}
+                      />
+                      <label className="mc-label" htmlFor="armor-name">
+                        Nimi (lokissa)
+                      </label>
+                      <input
+                        id="armor-name"
+                        className="mc-input"
+                        value={armorDisplayName}
+                        onChange={(e) => setArmorDisplayName(e.target.value)}
+                        maxLength={64}
+                      />
+                      <p className="mc-hint">
+                        LEATHER-tason varuste, ei omaa tekstuuria. Id ei saa olla sama kuin modilla
+                        tai tavaraesineellä.{' '}
+                        {!armorIdOk && armorId ? 'Tarkista tunnus.' : ''}
+                        {armorIdOk && armorId === modId ? 'Valitse eri id kuin modilla.' : ''}
+                        {armorIdOk && armorId === itemId && simpleItemEnabled
+                          ? 'Armor-id ei saa olla sama kuin tavara-id.'
+                          : ''}
+                        {simpleArmorEnabled && !armorDisplayOk ? 'Anna nimi.' : ''}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="mc-hint">Yksi armor-pala kerrallaan (geneerinen ulkonäkö).</p>
                   )}
                 </div>
 
