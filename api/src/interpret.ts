@@ -47,6 +47,7 @@ Pakolliset avaimet: loader, minecraftVersion, modId, displayName, wishText, feat
 Valinnaiset: wishSummary (string), warnings (string[]).
 
 Säännöt:
+- Tuote on kapea: vain tavaraesineet (nyt) ja tulevaisuudessa armor-varusteet — ei blokkeja, biomeja, bosseja tms. Jos käyttäjä pyytää armorista, warnings: lyhyt huomio että armor-generointi ei ole vielä käytössä; features jää [] ellei samaan toiveeseen sopii tavaraesine.
 - loader: käytä aina "fabric" ellei käyttäjä nimenomaan pyydä forgea.
 - minecraftVersion: täsmälleen yksi näistä: ${SUPPORTED_MINECRAFT_VERSIONS.join(', ')} — oletus 1.21.1 jos epäselvä.
 - modId: vain pienet kirjaimet, numerot ja alaviiva, alkaa kirjaimella.

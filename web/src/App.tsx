@@ -304,9 +304,10 @@ export default function App() {
             </h2>
 
             <p className="mc-hint" style={{ marginTop: 0, marginBottom: '1rem' }}>
-              Kerro omin sanoin, millaisen modin haluat. Paina „Generoi modi” — palvelu täyttää
-              tekniset tiedot (ja tarvittaessa yksinkertaisen esineen) automaattisesti ja rakentaa
-              valmiin <code>.jar</code>-tiedoston Fabricille. Sama Minecraft-versio kuin pelissäsi.
+              Kerro omin sanoin, millaisen modin haluat. Benkku on tarkoitus pitää kevyenä: vain
+              uudet esineet ja varusteet (armor) — ei blokkeja, biomeja, bossseja eikä muuta laajaa.
+              Paina „Generoi modi”: tekoäly täyttää tekniset kentät ja rakennetaan valmis Fabric-modin{' '}
+              <code>.jar</code>. Sama Minecraft-versio kuin pelissäsi.
             </p>
 
             <div
@@ -320,38 +321,51 @@ export default function App() {
               aria-labelledby="limits-title"
             >
               <h3 id="limits-title" className="mc-panel-title" style={{ fontSize: '1rem', marginTop: 0 }}>
-                Mitä modilla voi tehdä (nyt)
+                Rajaus: esineet ja armor
+              </h3>
+              <p className="mc-hint" style={{ margin: '0.25rem 0 0.75rem' }}>
+                Tämän generaattorin kohde on kapea: vain tavaraesineet ja panssari / varusteet
+                (kypärä, haarniska, housut, saappaat). Ei uusia blokkeja, maailmoja, mobeja,
+                koneita tai tehtäväketjuja.
+              </p>
+              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
+                Toimii nyt
               </h3>
               <ul className="mc-hint" style={{ margin: '0.35rem 0 0.85rem 1.1rem', padding: 0 }}>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Saat oikean Fabric-<code>.jar</code>-tiedoston, joka latautuu <code>mods</code>
-                  -kansioon, kun Minecraft-versio ja Fabric täsmäävät.
+                  Oikea Fabric-<code>.jar</code>, joka latautuu <code>mods</code>-kansioon (oikea
+                  MC-versio + Fabric).
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Modi käynnistyy ja näkyy lokirivillä (perusmodin runko).
-                </li>
-                <li style={{ marginBottom: '0.35rem' }}>
-                  Voit saada yhden tai usean yksinkertaisen esineen (tavara), jonka tunniste ja nimi
-                  voidaan poimia toiveesta — esine on pelissä käytettävissä, mutta ilman omaa
-                  piirrettyä tekstuuria (ulkonäkö on pelin oletus / geneerinen).
+                  Yksi tai useampi yksinkertainen esine (tavara): nimi ja tunniste voidaan poimia
+                  toiveesta. Ulkonäkö on geneerinen (ei omaa piirrettyä tekstuuria).
                 </li>
               </ul>
               <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
-                Mitä ei voi (vielä)
+                Tulossa seuraavaksi
+              </h3>
+              <ul className="mc-hint" style={{ margin: '0.35rem 0 0.85rem 1.1rem', padding: 0 }}>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Armor-varusteet (esim. kypärä tai setti) samaan generointiin — vaatii vielä
+                  koodin ja resurssien tuen; toiveissa voi jo kuvailla varusteita, mutta buildiin
+                  tulee toistaiseksi vain tavaraesineitä.
+                </li>
+              </ul>
+              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
+                Ei kuulu tähän työkaluun
               </h3>
               <ul className="mc-hint" style={{ margin: '0.35rem 0 0', padding: 0, listStyleType: 'disc' }}>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Hahmollesi erillistä vaatetta, uutta ulkonäköä tai skiniä — Java Editionissa ne
-                  ovat oma maailmansa (pelaajan skini, resurssipaketit, laajemmat kosmeettiset modit).
-                  Benkku ei luo 3D-malleja, vaatekappaleita eikä kustomoituja tekstuureja hahmolle.
+                  Pelaajan skini tai „kokonaan uusi hahmon ulkonäkö” ilman varuste-esinettä — se on
+                  eri järjestelmä (skini, resurssipaketit).
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Omaa kuvaa miekkaan, uusia blokkeja, biomeja, bossia, tehtäväketjuja tai muuta
-                  monimutkaista pelilogiikkaa pelkästä tekstistä automaattisesti.
+                  Laajat modit: lohkot, generointi, bossit, automaatio, monimutkainen logiikka
+                  pelkästä tekstistä.
                 </li>
                 <li style={{ marginBottom: 0 }}>
-                  Valmista „täysin samanlaista kuin kuvailit” -modia ilman rajoituksia: tulkinta
-                  auttaa vain niissä asioissa, joihin generaattorissa on jo tuki.
+                  Täysin vapaa „tee mitä vain” ilman rajoja: tulkinta noudattaa vain tuettuja
+                  ominaisuuksia.
                 </li>
               </ul>
             </div>
