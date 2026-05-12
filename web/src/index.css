@@ -1,0 +1,300 @@
+/* Minecraft-inspired UI (original styling; not Mojang assets) */
+:root {
+  --mc-sky-top: #3c7bc4;
+  --mc-sky-mid: #6eaeff;
+  --mc-grass-light: #86c44a;
+  --mc-grass: #5a9e30;
+  --mc-grass-dark: #3d7a1f;
+  --mc-dirt: #6d5340;
+  --mc-dirt-dark: #4a3528;
+  --mc-panel: #c6c6c6;
+  --mc-panel-inner: #dcdcdc;
+  --mc-border-dark: #2d2d2d;
+  --mc-border-mid: #555555;
+  --mc-text: #1a1a1a;
+  --mc-text-dim: #3d3d3d;
+  --mc-gold: #ffcc33;
+  --mc-gold-shadow: #b8860b;
+  --mc-btn-top: #7fd955;
+  --mc-btn-mid: #5a9e30;
+  --mc-btn-bottom: #3d7a1f;
+  --mc-btn-text: #1a320d;
+  --font-pixel: 'Press Start 2P', system-ui, sans-serif;
+  --font-ui: 'VT323', ui-monospace, monospace;
+  --slot-inset: inset 2px 2px 0 #373737, inset -2px -2px 0 #ffffff;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 20px;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--mc-text);
+  font-family: var(--font-ui);
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.mc-world {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(
+    180deg,
+    var(--mc-sky-top) 0%,
+    var(--mc-sky-mid) 28%,
+    var(--mc-grass-light) 28.5%,
+    var(--mc-grass) 34%,
+    var(--mc-grass-dark) 38%,
+    var(--mc-dirt) 38.5%,
+    var(--mc-dirt-dark) 100%
+  );
+  position: relative;
+  overflow-x: hidden;
+}
+
+.mc-world::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 62%;
+  pointer-events: none;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8'%3E%3Crect width='8' height='8' fill='%23000'/%3E%3Cpath d='M0 0h4v4H0zm4 4h4v4H4z' fill='%23fff'/%3E%3C/svg%3E");
+  background-size: 8px 8px;
+  image-rendering: pixelated;
+  z-index: 0;
+}
+
+.mc-wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.25rem 1rem 2rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mc-title-block {
+  text-align: center;
+  padding-top: 0.5rem;
+}
+
+.mc-logo {
+  font-family: var(--font-pixel);
+  font-size: clamp(1.1rem, 4vw, 1.75rem);
+  color: #fff;
+  text-shadow:
+    4px 4px 0 var(--mc-border-dark),
+    -1px -1px 0 #00000055;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.mc-sub {
+  font-family: var(--font-ui);
+  font-size: 1.5rem;
+  color: var(--mc-gold);
+  text-shadow: 2px 2px 0 #3a3000;
+  margin: 0.35rem 0 0;
+}
+
+.mc-splash {
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  color: #ffff55;
+  text-shadow: 2px 2px 0 #3a3a00;
+  transform: rotate(-8deg);
+  display: inline-block;
+  margin-top: 0.75rem;
+  max-width: 100%;
+}
+
+.mc-panel {
+  background: var(--mc-panel);
+  border: 4px solid;
+  border-color: var(--mc-border-mid) var(--mc-border-dark) var(--mc-border-dark)
+    var(--mc-border-mid);
+  box-shadow:
+    inset 2px 2px 0 #ffffffaa,
+    inset -2px -2px 0 #00000033,
+    6px 6px 0 #00000055;
+  padding: 1rem 1.1rem 1.15rem;
+}
+
+.mc-panel-inner {
+  background: var(--mc-panel-inner);
+  border: 2px solid #a0a0a0;
+  padding: 1rem;
+  box-shadow: var(--slot-inset);
+}
+
+.mc-panel-title {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  color: var(--mc-text-dim);
+  margin: 0 0 0.85rem;
+  letter-spacing: 0.02em;
+}
+
+.mc-row {
+  margin-bottom: 0.85rem;
+}
+
+.mc-row:last-child {
+  margin-bottom: 0;
+}
+
+.mc-label {
+  display: block;
+  font-size: 1.25rem;
+  color: var(--mc-text-dim);
+  margin-bottom: 0.25rem;
+}
+
+.mc-hint {
+  font-size: 1.05rem;
+  color: #555;
+  margin-top: 0.2rem;
+}
+
+.mc-select,
+.mc-input,
+.mc-textarea {
+  width: 100%;
+  font-family: var(--font-ui);
+  font-size: 1.35rem;
+  padding: 0.45rem 0.55rem;
+  border: 2px solid #2d2d2d;
+  background: #fff;
+  color: var(--mc-text);
+  box-shadow: var(--slot-inset);
+  border-radius: 0;
+}
+
+.mc-textarea {
+  min-height: 5rem;
+  resize: vertical;
+}
+
+.mc-select:focus,
+.mc-input:focus,
+.mc-textarea:focus {
+  outline: 2px solid var(--mc-gold);
+  outline-offset: 1px;
+}
+
+.mc-loader-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.mc-loader-btn {
+  flex: 1;
+  min-width: 120px;
+  font-family: var(--font-pixel);
+  font-size: 0.55rem;
+  padding: 0.65rem 0.5rem;
+  border: 3px solid;
+  border-color: #aaa #333 #333 #aaa;
+  background: linear-gradient(180deg, #b0b0b0 0%, #8e8e8e 100%);
+  color: #222;
+  cursor: pointer;
+  box-shadow: inset 1px 1px 0 #ffffff88;
+}
+
+.mc-loader-btn:hover {
+  filter: brightness(1.05);
+}
+
+.mc-loader-btn.is-on {
+  border-color: var(--mc-gold-shadow) #5a4a10 #5a4a10 var(--mc-gold-shadow);
+  background: linear-gradient(180deg, #ffe566 0%, var(--mc-gold) 45%, #c9a020 100%);
+  color: #2a2000;
+}
+
+.mc-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+}
+
+.mc-btn-primary {
+  font-family: var(--font-pixel);
+  font-size: 0.6rem;
+  padding: 0.85rem 1rem;
+  border: 3px solid;
+  border-color: #9fe86a #1a3a0a #1a3a0a #9fe86a;
+  background: linear-gradient(
+    180deg,
+    var(--mc-btn-top) 0%,
+    var(--mc-btn-mid) 45%,
+    var(--mc-btn-bottom) 100%
+  );
+  color: var(--mc-btn-text);
+  cursor: pointer;
+  text-shadow: 1px 1px 0 #ffffff55;
+  box-shadow: 2px 4px 0 #00000044;
+}
+
+.mc-btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.mc-btn-primary:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 1px 2px 0 #00000044;
+}
+
+.mc-btn-primary:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mc-footnote {
+  font-size: 1.1rem;
+  color: #e8dcc8;
+  text-shadow: 1px 1px 0 #00000088;
+  text-align: center;
+  margin-top: auto;
+  padding-top: 1rem;
+}
+
+.mc-footnote code {
+  font-family: var(--font-ui);
+  background: #00000033;
+  padding: 0.1rem 0.25rem;
+}
+
+.mc-badge {
+  display: inline-block;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  padding: 0.25rem 0.4rem;
+  background: #2a2419;
+  color: var(--mc-gold);
+  border: 2px solid #5a4a20;
+  vertical-align: middle;
+  margin-left: 0.35rem;
+}
