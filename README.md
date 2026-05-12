@@ -2,6 +2,9 @@
 
 Minecraft **Java Edition** -modigeneraattorin käyttöliittymä (Vite + React). Teema on Minecraft-henkinä (ei Mojangin grafiikkaa).
 
+- **Repo:** [github.com/joniwinsten-lab/Benkku](https://github.com/joniwinsten-lab/Benkku)
+- **GitHub Pages (kun workflow on ajettu):** [joniwinsten-lab.github.io/Benkku/](https://joniwinsten-lab.github.io/Benkku/)
+
 ## Kehitys
 
 ```bash
@@ -19,9 +22,9 @@ VITE_BASE_PATH=/Benkku/ npm run build
 
 ## Julkaisu (GitHub Pages)
 
-Repossa **Settings → Pages**: Source = **GitHub Actions**. Workflow `Deploy GitHub Pages` rakentaa `web/`-hakemiston ja julkaisee `dist`-kansion.
+Repossa **Settings → Pages**: **Build and deployment** → Source = **GitHub Actions**. Ensimmäisellä kerralla GitHub saattaa pyytää hyväksymään **github-pages**-ympäristön workflow-runista.
 
-Sivun osoite: `https://<github-tunnus>.github.io/Benkku/` (kun repo on nimeltään `Benkku`).
+Workflow **Deploy GitHub Pages** rakentaa `web/`-hakemiston ja julkaisee `dist`-kansion osoitteeseen `https://joniwinsten-lab.github.io/Benkku/`.
 
 ## Benkulle (Windows)
 
