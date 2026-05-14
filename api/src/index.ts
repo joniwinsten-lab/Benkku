@@ -27,6 +27,26 @@ function enqueue(task: () => Promise<void>): void {
   queue = queue.then(task).catch(() => {})
 }
 
+/** Ladattavan .jar-tiedoston nimi: mod id + MC-versio + lyhyt näyttönimi (Gradle-tiedoston nimi varalla). */
+function jarAttachmentFilename(j: Job): string {
+  const gradleSafe = (j.fileName ?? 'mod.jar').replace(/[^a-zA-Z0-9._-]/g, '_')
+  const specParsed =
+    j.spec != null && typeof j.spec === 'object' ? ModSpecSchema.safeParse(j.spec) : null
+  if (!specParsed?.success) return gradleSafe
+
+  const { modId, displayName, minecraftVersion } = specParsed.data
+  const title = displayName
+    .trim()
+    .replace(/\s+/g, '_')
+    .replace(/[^a-zA-Z0-9._-]+/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '')
+    .slice(0, 48)
+  const core = [modId, minecraftVersion, title].filter(Boolean).join('_')
+  const withJar = `${core}.jar`.replace(/[^a-zA-Z0-9._-]/g, '_')
+  return withJar.length >= 6 ? withJar : gradleSafe
+}
+
 const app = new Hono()
 
 const allowedOrigins = (process.env.CORS_ORIGINS ?? '')
@@ -164,7 +184,7 @@ app.get('/v1/build/:id/jar', (c) => {
     return c.json({ error: 'Ei valmis', status: j.status }, 409)
   }
 
-  const safeName = j.fileName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const safeName = jarAttachmentFilename(j)
   return new Response(new Uint8Array(j.jarBytes), {
     status: 200,
     headers: {

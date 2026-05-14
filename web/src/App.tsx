@@ -5,6 +5,10 @@ type Loader = 'fabric' | 'forge'
 /** Fabric — synkassa API:n `fabricVersions.ts` kanssa */
 const MC_VERSIONS = ['1.21.1', '1.21', '1.20.4', '1.20.1'] as const
 
+/** Esitäytetty toive — paina „Kokeile tätä toivetta”, sitten Generoi modi. */
+const DEMO_WISH_TEXT =
+  'Haluan Fabric-modin: punainen omena-tavara (#cc5533) ja tummanvihreä nahkakypärä (#2d4a22). Modin id benkku_demo ja näyttönimi Benkun testimodi.'
+
 const SPLASHES = [
   'Koodi kuten kivi!',
   'Java Edition!',
@@ -46,6 +50,42 @@ type InterpretDraft = {
   displayName: string
   wishText: string
   features: ModFeature[]
+}
+
+/** Lyhyt suomenkielinen virhe käyttäjälle; raaka teksti tallennetaan erikseen. */
+function friendlyErrorMessage(raw: string): string {
+  const s = raw.toLowerCase()
+  if (s.includes('gradle exited') || s.includes('build failed')) {
+    return 'Modin käännös epäonnistui (Gradle). Tarkista että valittu Minecraft-versio on tuettu ja yritä uudelleen.'
+  }
+  if (s.includes('out of memory') || s.includes('oom') || s.includes('cannot allocate') || s.includes('heap space')) {
+    return 'Palvelimelta loppui muisti kesken käännöksen. Odota hetki ja yritä uudelleen.'
+  }
+  if (s.includes('openai') || s.includes('fetch failed') || s.includes('network')) {
+    return 'Yhteys ulkoiseen palveluun epäonnistui. Tarkista verkko tai yritä myöhemmin uudelleen.'
+  }
+  if (raw.includes('422') || s.includes('virheellinen pyyntö')) {
+    return 'Pyyntö ei kelpaa — tarkista valinnat (mod id, versio).'
+  }
+  if (s.includes('cors')) {
+    return 'Selain esti yhteyden API:in (CORS). Kehityksessä tarkista VITE_API_URL.'
+  }
+  if (s.includes('timeout') || s.includes('aikakatkaisu')) {
+    return 'Generointi kesti liian kauan. Yritä uudelleen — ruuhka voi hidastaa jonoa.'
+  }
+  if (s.includes('tuntematon työ')) {
+    return 'Työtä ei löydy — linkki voi olla vanhentunut. Generoi modi uudelleen.'
+  }
+  if (s.includes('ei valmis')) {
+    return 'Lataus ei vielä onnistu — odota että generointi valmistuu.'
+  }
+  if (s.includes('openai_api_key') || s.includes('tulkinta ei ole')) {
+    return 'Tekoälytulkinta ei ole käytössä tällä palvelimella.'
+  }
+  if (s.includes('tilan luku')) {
+    return 'Työn tilaa ei saatu — yritä hetken päästä uudelleen.'
+  }
+  return 'Jokin meni pieleen. Voit avata teknisen viestin alta.'
 }
 
 function resolveApiBase(): string {
@@ -92,6 +132,10 @@ export default function App() {
   )
   const [buildMessage, setBuildMessage] = useState<string | null>(null)
   const [jobId, setJobId] = useState<string | null>(null)
+  const [buildLogTail, setBuildLogTail] = useState<string | null>(null)
+  const [buildLogExpanded, setBuildLogExpanded] = useState(false)
+  const [buildRawError, setBuildRawError] = useState<string | null>(null)
+  const [showTechnicalError, setShowTechnicalError] = useState(false)
 
   const modIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,63}$/.test(modId), [modId])
   const itemIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,40}$/.test(itemId), [itemId])
@@ -159,17 +203,36 @@ export default function App() {
       while (Date.now() < deadline) {
         const r = await fetch(`${apiBase}/v1/build/${id}`)
         if (!r.ok) {
+          const raw = `tilan luku ${r.status}`
           setBuildPhase('error')
-          setBuildMessage(`Tilan luku epäonnistui (${r.status})`)
+          setBuildRawError(`HTTP ${r.status}`)
+          setBuildMessage(friendlyErrorMessage(raw))
           return
         }
         const j = (await r.json()) as {
           status: string
           error?: string | null
+          logTail?: string | null
           spec?: { wishText?: string | null } | null
         }
+
+        const tail = typeof j.logTail === 'string' && j.logTail.trim() ? j.logTail : null
+        setBuildLogTail(tail)
+
+        if (j.status === 'queued') {
+          setBuildPhase('queued')
+          setBuildMessage('Työ jonossa — odota vuoroa…')
+        } else if (j.status === 'running') {
+          setBuildPhase('running')
+          setBuildMessage(
+            'Gradle kääntää modia. Tämä voi kestää useista minuuteista yli kymmeneen — älä sulje välilehteä.',
+          )
+        }
+
         if (j.status === 'done') {
           setBuildPhase('done')
+          setBuildRawError(null)
+          setShowTechnicalError(false)
           const w = j.spec?.wishText?.trim()
           setBuildMessage(
             w
@@ -180,13 +243,16 @@ export default function App() {
         }
         if (j.status === 'error') {
           setBuildPhase('error')
-          setBuildMessage(j.error ?? 'Generointi epäonnistui.')
+          const raw = j.error ?? 'Generointi epäonnistui.'
+          setBuildRawError(raw)
+          setBuildMessage(friendlyErrorMessage(raw))
           return
         }
         await new Promise((res) => setTimeout(res, 2000))
       }
       setBuildPhase('error')
-      setBuildMessage('Aikakatkaisu: yritä uudelleen.')
+      setBuildRawError('Aikakatkaisu')
+      setBuildMessage(friendlyErrorMessage('timeout'))
     },
     [apiBase],
   )
@@ -194,12 +260,17 @@ export default function App() {
   const handleGenerate = async () => {
     setBuildMessage(null)
     setJobId(null)
+    setBuildLogTail(null)
+    setBuildLogExpanded(false)
+    setBuildRawError(null)
+    setShowTechnicalError(false)
 
     if (!apiBase) {
       setBuildPhase('error')
-      setBuildMessage(
-        'API-osoite puuttuu. Kehityksessä: web/.env → VITE_API_URL=http://127.0.0.1:8787 ja npm run dev uudelleen.',
-      )
+      const raw =
+        'API-osoite puuttuu. Kehityksessä: web/.env → VITE_API_URL=http://127.0.0.1:8787 ja npm run dev uudelleen.'
+      setBuildRawError(raw)
+      setBuildMessage(friendlyErrorMessage(raw))
       return
     }
     if (!canGenerate) return
@@ -248,12 +319,16 @@ export default function App() {
         const idata = (await ir.json().catch(() => ({}))) as { draft?: InterpretDraft; error?: string }
         if (!ir.ok) {
           setBuildPhase('error')
-          setBuildMessage(idata.error ?? `Tulkinta epäonnistui (${ir.status})`)
+          const raw = idata.error ?? `Tulkinta epäonnistui (${ir.status})`
+          setBuildRawError(raw)
+          setBuildMessage(friendlyErrorMessage(raw))
           return
         }
         if (!idata.draft) {
           setBuildPhase('error')
-          setBuildMessage('Palvelin ei palauttanut ehdotusta.')
+          const raw = 'Palvelin ei palauttanut ehdotusta.'
+          setBuildRawError(raw)
+          setBuildMessage(friendlyErrorMessage(raw))
           return
         }
         const d = idata.draft
@@ -294,13 +369,15 @@ export default function App() {
         }
       } catch {
         setBuildPhase('error')
-        setBuildMessage('Verkkovirhe tulkinnassa.')
+        const raw = 'Verkkovirhe tulkinnassa.'
+        setBuildRawError(raw)
+        setBuildMessage(friendlyErrorMessage(raw))
         return
       }
     }
 
     setBuildPhase('queued')
-    setBuildMessage('Jonossa…')
+    setBuildMessage('Jonossa — odota, kunnes Gradle alkaa…')
 
     try {
       const r = await fetch(`${apiBase}/v1/build`, {
@@ -320,24 +397,32 @@ export default function App() {
 
       if (!r.ok) {
         setBuildPhase('error')
-        setBuildMessage(data.error ?? `Virhe ${r.status}`)
+        const raw = data.error ?? `Virhe ${r.status}`
+        setBuildRawError(raw)
+        setBuildMessage(friendlyErrorMessage(raw))
         return
       }
 
       if (!data.jobId) {
         setBuildPhase('error')
-        setBuildMessage('Palvelin ei palauttanut työtunnistetta.')
+        const raw = 'Palvelin ei palauttanut työtunnistetta.'
+        setBuildRawError(raw)
+        setBuildMessage(friendlyErrorMessage(raw))
         return
       }
 
       setJobId(data.jobId)
       setBuildPhase('running')
-      setBuildMessage('Tehdään moditiedostoa… Tämä voi kestää useita minuutteja.')
+      setBuildMessage(
+        'Työ käynnissä — Gradle kääntää modia. Tämä voi kestää useita minuutteja.',
+      )
 
       void pollJob(data.jobId)
     } catch {
       setBuildPhase('error')
-      setBuildMessage('Verkkovirhe — tarkista API ja CORS.')
+      const raw = 'Verkkovirhe — tarkista API ja CORS.'
+      setBuildRawError(raw)
+      setBuildMessage(friendlyErrorMessage(raw))
     }
   }
 
@@ -345,7 +430,9 @@ export default function App() {
     if (!apiBase || !jobId) return
     const r = await fetch(`${apiBase}/v1/build/${jobId}/jar`)
     if (!r.ok) {
-      setBuildMessage(`Lataus epäonnistui (${r.status})`)
+      const raw = `Lataus epäonnistui (${r.status})`
+      setBuildRawError(raw)
+      setBuildMessage(friendlyErrorMessage(raw))
       return
     }
     const blob = await r.blob()
@@ -448,6 +535,37 @@ export default function App() {
               </p>
             ) : null}
 
+            <div
+              className="mc-panel-inner"
+              style={{
+                marginBottom: '1rem',
+                border: '1px solid rgba(120, 200, 120, 0.35)',
+                borderRadius: 8,
+                padding: '0.75rem 1rem',
+                background: 'rgba(0, 40, 0, 0.2)',
+              }}
+              aria-labelledby="howto-title"
+            >
+              <h3 id="howto-title" className="mc-panel-title" style={{ fontSize: '1rem', marginTop: 0 }}>
+                Näin testaat lyhyesti
+              </h3>
+              <ol className="mc-hint" style={{ margin: '0.35rem 0 0', paddingLeft: '1.25rem' }}>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Valitse sama <strong>Minecraft-versio</strong> kuin pelissäsi ja varmista, että{' '}
+                  <strong>Fabric</strong> on asennettuna.
+                </li>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Paina <strong>Kokeile tätä toivetta</strong> tai kirjoita oma teksti, sitten{' '}
+                  <strong>Generoi modi</strong>. Odota rauhassa — käännös voi kestää useista minuuteista yli
+                  kymmeneen.
+                </li>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Kun näet <strong>Lataa .jar</strong>, tallenna tiedosto ja kopioi se pelin{' '}
+                  <code>mods</code>-kansioon, sitten käynnistä Minecraft uudelleen.
+                </li>
+              </ol>
+            </div>
+
             <div className="mc-row">
               <label className="mc-label" htmlFor="wish">
                 Mitä modia haluat?
@@ -460,6 +578,18 @@ export default function App() {
                 placeholder="Esim. haluan nahkaisen kypärän ja omenan tavaraluetteloon, modin nimeksi Olipa kerran…"
                 maxLength={2000}
               />
+              <div className="mc-loader-row" style={{ marginTop: '0.35rem' }}>
+                <button
+                  type="button"
+                  className="mc-loader-btn"
+                  onClick={() => {
+                    setWishText(DEMO_WISH_TEXT)
+                    setShowAdvanced(true)
+                  }}
+                >
+                  Kokeile tätä toivetta
+                </button>
+              </div>
               <p className="mc-hint">
                 {interpretAvailable
                   ? 'Tekoäly lukee tekstin ennen generointia ja täyttää modin nimen, tunnisteen ja version.'
@@ -727,6 +857,11 @@ export default function App() {
                   Lataa .jar
                 </button>
               ) : null}
+              {(buildPhase === 'queued' || buildPhase === 'running') && jobId ? (
+                <p className="mc-hint" style={{ textAlign: 'center', margin: 0, width: '100%' }}>
+                  {buildPhase === 'queued' ? 'Vaihe: jono' : 'Vaihe: Gradle-käännös'}
+                </p>
+              ) : null}
               {buildMessage ? (
                 <p className="mc-hint" style={{ textAlign: 'center', margin: 0 }}>
                   {buildMessage}
@@ -736,6 +871,91 @@ export default function App() {
                   Fabric · {mcVersion} · {modIdOk ? modId : '…'}
                 </p>
               )}
+              {buildLogTail &&
+              (buildPhase === 'running' || buildPhase === 'error' || buildPhase === 'done') ? (
+                <div style={{ width: '100%', maxWidth: '100%' }}>
+                  <button
+                    type="button"
+                    className="mc-hint"
+                    style={{
+                      display: 'block',
+                      margin: '0.35rem auto 0',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      background: 'none',
+                      border: 'none',
+                      color: 'inherit',
+                      font: 'inherit',
+                      padding: 0,
+                    }}
+                    onClick={() => setBuildLogExpanded((v) => !v)}
+                  >
+                    {buildLogExpanded ? 'Piilota Gradle-loki' : 'Näytä Gradle-loki (loppu)'}
+                  </button>
+                  {buildLogExpanded ? (
+                    <pre
+                      className="mc-hint"
+                      style={{
+                        marginTop: '0.5rem',
+                        maxHeight: 220,
+                        overflow: 'auto',
+                        textAlign: 'left',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.35,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        padding: '0.5rem',
+                        background: 'rgba(0,0,0,0.35)',
+                        borderRadius: 6,
+                      }}
+                    >
+                      {buildLogTail}
+                    </pre>
+                  ) : null}
+                </div>
+              ) : null}
+              {buildPhase === 'error' && buildRawError ? (
+                <div style={{ width: '100%', maxWidth: '100%' }}>
+                  <button
+                    type="button"
+                    className="mc-hint"
+                    style={{
+                      display: 'block',
+                      margin: '0.35rem auto 0',
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      background: 'none',
+                      border: 'none',
+                      color: 'inherit',
+                      font: 'inherit',
+                      padding: 0,
+                    }}
+                    onClick={() => setShowTechnicalError((v) => !v)}
+                  >
+                    {showTechnicalError ? 'Piilota tekninen viesti' : 'Näytä tekninen viesti / raaka virhe'}
+                  </button>
+                  {showTechnicalError ? (
+                    <pre
+                      className="mc-hint"
+                      style={{
+                        marginTop: '0.5rem',
+                        maxHeight: 180,
+                        overflow: 'auto',
+                        textAlign: 'left',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.35,
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-word',
+                        padding: '0.5rem',
+                        background: 'rgba(40,0,0,0.35)',
+                        borderRadius: 6,
+                      }}
+                    >
+                      {buildRawError}
+                    </pre>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </div>
         </section>
