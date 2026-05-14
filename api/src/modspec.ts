@@ -11,7 +11,37 @@ export const SimpleItemFeatureSchema = z.object({
 
 export type SimpleItemFeature = z.infer<typeof SimpleItemFeatureSchema>
 
-export const ArmorSlotSchema = z.enum(['helmet', 'chestplate', 'leggings', 'boots'])
+const ARMOR_SLOTS = ['helmet', 'chestplate', 'leggings', 'boots'] as const
+export type ArmorSlot = (typeof ARMOR_SLOTS)[number]
+
+/** Tekoäly / käyttäjä voi käyttää arkikieltä; normalisoidaan ennen enum-tarkistusta. */
+const ARMOR_SLOT_ALIASES: Record<string, ArmorSlot> = {
+  helmet: 'helmet',
+  head: 'helmet',
+  hat: 'helmet',
+  cap: 'helmet',
+  chestplate: 'chestplate',
+  chest: 'chestplate',
+  body: 'chestplate',
+  torso: 'chestplate',
+  leggings: 'leggings',
+  legs: 'leggings',
+  pants: 'leggings',
+  trousers: 'leggings',
+  boots: 'boots',
+  feet: 'boots',
+  foot: 'boots',
+  shoes: 'boots',
+}
+
+function normalizeArmorSlotInput(raw: unknown): unknown {
+  if (typeof raw !== 'string') return raw
+  const t = raw.trim().toLowerCase()
+  if ((ARMOR_SLOTS as readonly string[]).includes(t)) return t
+  return ARMOR_SLOT_ALIASES[t] ?? raw
+}
+
+export const ArmorSlotSchema = z.preprocess(normalizeArmorSlotInput, z.enum(ARMOR_SLOTS))
 
 export const SimpleArmorFeatureSchema = z.object({
   type: z.literal('simple_armor'),

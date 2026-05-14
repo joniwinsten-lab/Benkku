@@ -53,7 +53,7 @@ Säännöt:
 - modId: vain pienet kirjaimet, numerot ja alaviiva, alkaa kirjaimella.
 - displayName: lyhyt näyttönimi suomeksi tai englanniksi.
 - wishText: lyhennä käyttäjän toive max 2000 merkkiin; säilytä idea.
-- features: max 5 kohdetta. Tavara: { "type":"simple_item", "itemId", "displayName", valinnainen "tintHex":"#RRGGBB" jos väri mainitaan }. Armor: { "type":"simple_armor", "armorId", "displayName", "slot", valinnainen "tintHex" }. itemId/armorId eri kuin modId; sama armor-slot kerran.
+- features: max 5 kohdetta. Tavara: { "type":"simple_item", "itemId", "displayName", valinnainen "tintHex":"#RRGGBB" jos väri mainitaan }. Armor: { "type":"simple_armor", "armorId", "displayName", "slot", valinnainen "tintHex" }. Armor-slot JSON:issa täsmälleen yksi merkkijono: "helmet" | "chestplate" | "leggings" | "boots" (kypärä = helmet, ei "head"). itemId/armorId eri kuin modId; sama armor-slot kerran.
 - wishSummary: 1-2 lausetta suomeksi mitä ymmärsit.
 - warnings: epäselvät kohdat (tyhjä taulukko jos ei huomioitavaa).`
 
