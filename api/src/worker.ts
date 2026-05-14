@@ -37,7 +37,8 @@ async function patchModProject(workDir: string, spec: ModSpec): Promise<void> {
   const gradlePropsPath = join(workDir, 'gradle.properties')
   let gradleProps = readFileSync(gradlePropsPath, 'utf8')
   gradleProps = gradleProps.replace(/^minecraft_version=.*$/m, `minecraft_version=${profile.minecraft}`)
-  gradleProps = gradleProps.replace(/^loader_version=.*$/m, `loader_version=${profile.loader}`)
+  const fabricLoader = spec.fabricLoaderVersion
+  gradleProps = gradleProps.replace(/^loader_version=.*$/m, `loader_version=${fabricLoader}`)
   gradleProps = gradleProps.replace(/^loom_version=.*$/m, `loom_version=${profile.loom}`)
   gradleProps = gradleProps.replace(/^fabric_api_version=.*$/m, `fabric_api_version=${profile.fabricApi}`)
   gradleProps = gradleProps.replace(/^mod_id=.*$/m, `mod_id=${modId}`)

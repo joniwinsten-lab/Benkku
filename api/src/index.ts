@@ -4,7 +4,7 @@ import { cors } from 'hono/cors'
 import { zipSync } from 'fflate'
 import { randomUUID } from 'node:crypto'
 import { SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
-import { ModSpecSchema, validateModSpecForBuild } from './modspec.js'
+import { FABRIC_LOADER_VERSIONS, ModSpecSchema, validateModSpecForBuild } from './modspec.js'
 import { interpretToDraft, parseInterpretRequest } from './interpret.js'
 import { runFabricBuild } from './worker.js'
 
@@ -79,6 +79,8 @@ app.get('/health', (c) =>
   c.json({
     ok: true,
     fabricMinecraft: SUPPORTED_MINECRAFT_VERSIONS,
+    fabricLoaders: [...FABRIC_LOADER_VERSIONS],
+    fabricLoaderDefault: '0.18.3',
     interpretAvailable: Boolean(process.env.OPENAI_API_KEY),
   }),
 )
@@ -170,6 +172,7 @@ app.get('/v1/build/:id', (c) => {
           loader: specParsed.data.loader,
           wishText: specParsed.data.wishText ?? null,
           features: specParsed.data.features ?? [],
+          fabricLoaderVersion: specParsed.data.fabricLoaderVersion,
         }
       : null
 

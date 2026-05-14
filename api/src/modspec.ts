@@ -60,6 +60,12 @@ export const ModFeatureSchema = z.discriminatedUnion('type', [
 
 export type ModFeature = z.infer<typeof ModFeatureSchema>
 
+/** Fabric Loader -versiot, jotka löytyvät meta.fabricmc.net:stä kaikille tuetuille MC-versioille. */
+export const FABRIC_LOADER_VERSIONS = ['0.18.3', '0.18.4', '0.18.5', '0.18.6', '0.19.2'] as const
+export type FabricLoaderVersion = (typeof FABRIC_LOADER_VERSIONS)[number]
+
+const FabricLoaderVersionSchema = z.enum(FABRIC_LOADER_VERSIONS)
+
 /** Request body for POST /v1/build */
 export const ModSpecSchema = z.object({
   loader: z.enum(['fabric', 'forge']),
@@ -68,6 +74,8 @@ export const ModSpecSchema = z.object({
   displayName: z.string().trim().min(1).max(64),
   wishText: z.string().max(2000).optional(),
   features: z.array(ModFeatureSchema).max(16).optional(),
+  /** Gradle käyttää tätä Fabric Loader -versiota; fabric.mod.json sallii >=0.18.3. */
+  fabricLoaderVersion: FabricLoaderVersionSchema.default('0.18.3'),
 })
 
 export type ModSpec = z.infer<typeof ModSpecSchema>

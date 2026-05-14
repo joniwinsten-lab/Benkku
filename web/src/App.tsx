@@ -2,6 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type Loader = 'fabric' | 'forge'
 
+/** Fabric Loader -versiot (synkassa API `modspec` FABRIC_LOADER_VERSIONS). */
+const FABRIC_LOADERS_FALLBACK = ['0.18.3', '0.18.4', '0.18.5', '0.18.6', '0.19.2'] as const
+
 /** Fabric — synkassa API:n `fabricVersions.ts` kanssa */
 const MC_VERSIONS = ['1.21.11', '1.21.1', '1.21', '1.20.4', '1.20.1'] as const
 
@@ -121,6 +124,9 @@ export default function App() {
   const [itemTintHex, setItemTintHex] = useState('')
   const [armorTintHex, setArmorTintHex] = useState('')
 
+  const [fabricLoaders, setFabricLoaders] = useState<string[]>([...FABRIC_LOADERS_FALLBACK])
+  const [fabricLoaderVersion, setFabricLoaderVersion] = useState('0.18.3')
+
   const [interpretAvailable, setInterpretAvailable] = useState(false)
 
   const [buildPhase, setBuildPhase] = useState<'idle' | 'queued' | 'running' | 'done' | 'error'>(
@@ -151,7 +157,17 @@ export default function App() {
     if (!apiBase) return
     void fetch(`${apiBase}/health`)
       .then((r) => r.json())
-      .then((h: { interpretAvailable?: boolean }) => setInterpretAvailable(!!h.interpretAvailable))
+      .then(
+        (h: {
+          interpretAvailable?: boolean
+          fabricLoaders?: string[]
+        }) => {
+          setInterpretAvailable(!!h.interpretAvailable)
+          if (Array.isArray(h.fabricLoaders) && h.fabricLoaders.length > 0) {
+            setFabricLoaders(h.fabricLoaders)
+          }
+        },
+      )
       .catch(() => setInterpretAvailable(false))
   }, [apiBase])
 
@@ -184,14 +200,20 @@ export default function App() {
     return true
   }, [simpleArmorEnabled, armorIdOk, armorId, modId, armorDisplayOk, armorTintOk])
 
+  const fabricLoaderOk = useMemo(
+    () => fabricLoaders.includes(fabricLoaderVersion),
+    [fabricLoaders, fabricLoaderVersion],
+  )
+
   const canGenerate = useMemo(() => {
     if (!apiBase) return false
     if (!modIdOk) return false
+    if (!fabricLoaderOk) return false
     if (!simpleItemFormOk) return false
     if (!simpleArmorFormOk) return false
     if (buildPhase === 'queued' || buildPhase === 'running') return false
     return true
-  }, [apiBase, modIdOk, simpleItemFormOk, simpleArmorFormOk, buildPhase])
+  }, [apiBase, modIdOk, fabricLoaderOk, simpleItemFormOk, simpleArmorFormOk, buildPhase])
 
   const pollJob = useCallback(
     async (id: string) => {
@@ -270,6 +292,8 @@ export default function App() {
       return
     }
     if (!canGenerate) return
+
+    const useFabricLoader = fabricLoaderVersion
 
     const wish = wishText.trim()
     let useModId = modId
@@ -386,6 +410,7 @@ export default function App() {
           displayName: useDisplay,
           wishText: useWish,
           features: useFeatures,
+          fabricLoaderVersion: useFabricLoader,
         }),
       })
 
@@ -526,7 +551,7 @@ export default function App() {
             </div>
 
             <p className="mc-hint" style={{ marginBottom: '0.75rem' }}>
-              Oletus: Fabric · Minecraft {mcVersion}
+              Oletus: Fabric · Minecraft {mcVersion} · Loader {fabricLoaderVersion}
               {showAdvanced ? null : (
                 <>
                   {' · '}
@@ -570,6 +595,29 @@ export default function App() {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="mc-row">
+                  <label className="mc-label" htmlFor="fabric-loader">
+                    Fabric Loader
+                  </label>
+                  <select
+                    id="fabric-loader"
+                    className="mc-select"
+                    value={fabricLoaderVersion}
+                    onChange={(e) => setFabricLoaderVersion(e.target.value)}
+                  >
+                    {fabricLoaders.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mc-hint">
+                    Oletus <strong>0.18.3</strong>. Modin <code>fabric.mod.json</code> sallii loaderin{' '}
+                    <code>&gt;=0.18.3</code>; valittu versio ohjaa vain Gradle-käännöstä (Fabric API pysyy
+                    MC-version mukana).
+                  </p>
                 </div>
 
                 <div className="mc-row">
@@ -815,7 +863,7 @@ export default function App() {
                 </p>
               ) : (
                 <p className="mc-hint" style={{ textAlign: 'center', margin: 0 }}>
-                  Fabric · {mcVersion} · {modIdOk ? modId : '…'}
+                  Fabric · {mcVersion} · {fabricLoaderVersion} · {modIdOk ? modId : '…'}
                 </p>
               )}
               {buildLogTail &&
