@@ -469,72 +469,6 @@ export default function App() {
               Uusi modi
             </h2>
 
-            <p className="mc-hint" style={{ marginTop: 0, marginBottom: '1rem' }}>
-              Kerro omin sanoin, millaisen modin haluat. Benkku on tarkoitus pitää kevyenä: vain
-              uudet esineet ja varusteet (armor) — ei blokkeja, biomeja, bossseja eikä muuta laajaa.
-              Paina „Generoi modi”: tekoäly täyttää tekniset kentät ja rakennetaan valmis Fabric-modin{' '}
-              <code>.jar</code>. Sama Minecraft-versio kuin pelissäsi.
-            </p>
-
-            <div
-              className="mc-panel-inner"
-              style={{
-                marginBottom: '1rem',
-                border: '1px solid rgba(255,255,255,0.14)',
-                borderRadius: 8,
-                padding: '0.75rem 1rem',
-              }}
-              aria-labelledby="limits-title"
-            >
-              <h3 id="limits-title" className="mc-panel-title" style={{ fontSize: '1rem', marginTop: 0 }}>
-                Rajaus: esineet ja armor
-              </h3>
-              <p className="mc-hint" style={{ margin: '0.25rem 0 0.75rem' }}>
-                Tämän generaattorin kohde on kapea: vain tavaraesineet ja panssari / varusteet
-                (kypärä, haarniska, housut, saappaat). Ei uusia blokkeja, maailmoja, mobeja,
-                koneita tai tehtäväketjuja.
-              </p>
-              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
-                Toimii nyt
-              </h3>
-              <ul className="mc-hint" style={{ margin: '0.35rem 0 0.85rem 1.1rem', padding: 0 }}>
-                <li style={{ marginBottom: '0.35rem' }}>
-                  Oikea Fabric-<code>.jar</code>, joka latautuu <code>mods</code>-kansioon (oikea
-                  MC-versio + Fabric).
-                </li>
-                <li style={{ marginBottom: '0.35rem' }}>
-                  Yksi tai useampi tavaraesine tai armor-pala: tunnisteet ja nimet voidaan poimia
-                  toiveesta. Jokaiselle syntyy <strong>16×16</strong> tasainen väritekstuuri
-                  (inventaario + armorin kerrokset); värin voi antaa <code>#RRGGBB</code> tai se
-                  arvotaan id:stä. Ei piirrettyä kuvaa tai 3D-mallia.
-                </li>
-              </ul>
-              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
-                Ei kuulu tähän työkaluun
-              </h3>
-              <ul className="mc-hint" style={{ margin: '0.35rem 0 0', padding: 0, listStyleType: 'disc' }}>
-                <li style={{ marginBottom: '0.35rem' }}>
-                  Pelaajan skini tai „kokonaan uusi hahmon ulkonäkö” ilman varuste-esinettä — se on
-                  eri järjestelmä (skini, resurssipaketit).
-                </li>
-                <li style={{ marginBottom: '0.35rem' }}>
-                  Laajat modit: lohkot, generointi, bossit, automaatio, monimutkainen logiikka
-                  pelkästä tekstistä.
-                </li>
-                <li style={{ marginBottom: 0 }}>
-                  Täysin vapaa „tee mitä vain” ilman rajoja: tulkinta noudattaa vain tuettuja
-                  ominaisuuksia.
-                </li>
-              </ul>
-            </div>
-
-            {!apiBase ? (
-              <p className="mc-hint" style={{ marginBottom: '0.85rem' }}>
-                Kehitystila: aseta <code>VITE_API_URL</code> (esim. <code>http://127.0.0.1:8787</code>
-                ) tiedostoon <code>web/.env</code> ja käynnistä <code>npm run dev</code> uudelleen.
-              </p>
-            ) : null}
-
             <div
               className="mc-panel-inner"
               style={{
@@ -547,7 +481,7 @@ export default function App() {
               aria-labelledby="howto-title"
             >
               <h3 id="howto-title" className="mc-panel-title" style={{ fontSize: '1rem', marginTop: 0 }}>
-                Näin testaat lyhyesti
+                Näin tämä toimii
               </h3>
               <ol className="mc-hint" style={{ margin: '0.35rem 0 0', paddingLeft: '1.25rem' }}>
                 <li style={{ marginBottom: '0.35rem' }}>
@@ -555,9 +489,9 @@ export default function App() {
                   <strong>Fabric</strong> on asennettuna.
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Paina <strong>Kokeile tätä toivetta</strong> tai kirjoita oma teksti, sitten{' '}
-                  <strong>Generoi modi</strong>. Odota rauhassa — käännös voi kestää useista minuuteista yli
-                  kymmeneen.
+                  Kirjoita toive alla olevaan kenttään (tai paina <strong>Kokeile tätä toivetta</strong>), sitten{' '}
+                  <strong>Generoi modi</strong>. Tekoäly täyttää tekniset kentät; palvelin rakentaa Fabric-modin{' '}
+                  <code>.jar</code>-tiedoston. Käännös voi kestää useista minuuteista yli kymmeneen.
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
                   Kun näet <strong>Lataa .jar</strong>, tallenna tiedosto ja kopioi se pelin{' '}
@@ -565,6 +499,13 @@ export default function App() {
                 </li>
               </ol>
             </div>
+
+            {!apiBase ? (
+              <p className="mc-hint" style={{ marginBottom: '0.85rem' }}>
+                Kehitystila: aseta <code>VITE_API_URL</code> (esim. <code>http://127.0.0.1:8787</code>
+                ) tiedostoon <code>web/.env</code> ja käynnistä <code>npm run dev</code> uudelleen.
+              </p>
+            ) : null}
 
             <div className="mc-row">
               <label className="mc-label" htmlFor="wish">
@@ -956,6 +897,58 @@ export default function App() {
                   ) : null}
                 </div>
               ) : null}
+            </div>
+
+            <div
+              className="mc-panel-inner"
+              style={{
+                marginTop: '1.25rem',
+                border: '1px solid rgba(255,255,255,0.14)',
+                borderRadius: 8,
+                padding: '0.75rem 1rem',
+              }}
+              aria-labelledby="limits-title"
+            >
+              <h3 id="limits-title" className="mc-panel-title" style={{ fontSize: '1rem', marginTop: 0 }}>
+                Rajaus: esineet ja armor
+              </h3>
+              <p className="mc-hint" style={{ margin: '0.25rem 0 0.75rem' }}>
+                Tämän generaattorin kohde on kapea: vain tavaraesineet ja panssari / varusteet
+                (kypärä, haarniska, housut, saappaat). Ei uusia blokkeja, maailmoja, mobeja,
+                koneita tai tehtäväketjuja.
+              </p>
+              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
+                Toimii nyt
+              </h3>
+              <ul className="mc-hint" style={{ margin: '0.35rem 0 0.85rem 1.1rem', padding: 0 }}>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Oikea Fabric-<code>.jar</code>, joka latautuu <code>mods</code>-kansioon (oikea
+                  MC-versio + Fabric).
+                </li>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Yksi tai useampi tavaraesine tai armor-pala: tunnisteet ja nimet voidaan poimia
+                  toiveesta. Jokaiselle syntyy <strong>16×16</strong> tasainen väritekstuuri
+                  (inventaario + armorin kerrokset); värin voi antaa <code>#RRGGBB</code> tai se
+                  arvotaan id:stä. Ei piirrettyä kuvaa tai 3D-mallia.
+                </li>
+              </ul>
+              <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
+                Ei kuulu tähän työkaluun
+              </h3>
+              <ul className="mc-hint" style={{ margin: '0.35rem 0 0', padding: 0, listStyleType: 'disc' }}>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Pelaajan skini tai „kokonaan uusi hahmon ulkonäkö” ilman varuste-esinettä — se on
+                  eri järjestelmä (skini, resurssipaketit).
+                </li>
+                <li style={{ marginBottom: '0.35rem' }}>
+                  Laajat modit: lohkot, generointi, bossit, automaatio, monimutkainen logiikka
+                  pelkästä tekstistä.
+                </li>
+                <li style={{ marginBottom: 0 }}>
+                  Täysin vapaa „tee mitä vain” ilman rajoja: tulkinta noudattaa vain tuettuja
+                  ominaisuuksia.
+                </li>
+              </ul>
             </div>
           </div>
         </section>
