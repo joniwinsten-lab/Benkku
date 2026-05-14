@@ -68,6 +68,7 @@ async function patchModProject(workDir: string, spec: ModSpec): Promise<void> {
   let fabricJson = readFileSync(fabricJsonPath, 'utf8')
   fabricJson = fabricJson.replace(/"minecraft":\s*"[^"]*"/, `"minecraft": "${profile.minecraftDep}"`)
   fabricJson = fabricJson.replace(/"java":\s*"[^"]*"/, `"java": "${profile.javaDep}"`)
+  fabricJson = fabricJson.replace(/"fabric-api":\s*"[^"]*"/, `"fabric-api": "${profile.fabricApiModJsonDep}"`)
   writeFileSync(fabricJsonPath, fabricJson, 'utf8')
 
   const javaPath = join(workDir, 'src/main/java/fi/benkku/mod/BenkkuMod.java')

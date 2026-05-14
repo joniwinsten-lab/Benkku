@@ -1009,7 +1009,9 @@ export default function App() {
 
         <footer className="mc-footnote">
           Windows: pura zip jos latasit sen, kopioi <code>.jar</code> kansioon <code>mods</code>. Sama
-          Minecraft-versio ja Fabric asennettuna. Forge-tuki tulossa myöhemmin.
+          Minecraft-versio ja Fabric asennettuna. Forge-tuki tulossa myöhemmin. Jos peli kaatuu
+          käynnistyksessä (esim. „entrypoint main”), avaa instanssin <code>logs/latest.log</code> — siellä
+          on varsinainen Java-virhe; launcherin ikkuna voi näyttää harhaanjohtavaa tekstiä.
         </footer>
       </div>
     </div>

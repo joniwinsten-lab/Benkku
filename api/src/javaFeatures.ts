@@ -41,7 +41,7 @@ export function renderModFeaturesJava(
     lines.push('import java.util.Map;')
     lines.push('import net.minecraft.resources.ResourceKey;')
     lines.push('import net.minecraft.sounds.SoundEvents;')
-    lines.push('import net.minecraft.tags.TagKey;')
+    lines.push('import net.minecraft.tags.ItemTags;')
     lines.push('import net.minecraft.world.item.equipment.ArmorMaterial;')
     lines.push('import net.minecraft.world.item.equipment.ArmorType;')
     lines.push('import net.minecraft.world.item.equipment.EquipmentAsset;')
@@ -137,21 +137,15 @@ function emitArmorBlockHumanoid(
   const itemRl = idExpr(21, mojang, JSON.stringify(modId), JSON.stringify(ar.armorId))
   const armorType = armorTypeHumanoid(ar.slot)
   const dura = vanillaLikeDurability(ar.slot)
-  const repairTagPath = `${ar.armorId}_repair`
-  const repairTagLit = JSON.stringify(repairTagPath)
   const modLit = JSON.stringify(modId)
   const assetRl = idExpr(21, mojang, modLit, JSON.stringify(ar.armorId))
-  const tagRl = idExpr(21, mojang, modLit, repairTagLit)
 
   lines.push('\t\t{')
   lines.push(
     `\t\t\tResourceKey<EquipmentAsset> asset_${ar.armorId} = ResourceKey.create(EquipmentAssets.ROOT_ID, ${assetRl});`,
   )
   lines.push(
-    `\t\t\tTagKey<Item> repair_${ar.armorId} = TagKey.create(BuiltInRegistries.ITEM.key(), ${tagRl});`,
-  )
-  lines.push(
-    `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(15, Map.of(ArmorType.BOOTS, Integer.valueOf(1), ArmorType.LEGGINGS, Integer.valueOf(2), ArmorType.CHESTPLATE, Integer.valueOf(3), ArmorType.HELMET, Integer.valueOf(1)), 15, SoundEvents.ARMOR_EQUIP_LEATHER, 0.0F, 0.0F, repair_${ar.armorId}, asset_${ar.armorId});`,
+    `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(15, Map.of(ArmorType.BOOTS, Integer.valueOf(1), ArmorType.LEGGINGS, Integer.valueOf(2), ArmorType.CHESTPLATE, Integer.valueOf(3), ArmorType.HELMET, Integer.valueOf(1)), 15, SoundEvents.ARMOR_EQUIP_LEATHER, 0.0F, 0.0F, ItemTags.LEATHER, asset_${ar.armorId});`,
   )
   lines.push(`\t\t\t${idClass} item_${ar.armorId} = ${itemRl};`)
   lines.push(

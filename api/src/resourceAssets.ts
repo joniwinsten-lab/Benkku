@@ -74,17 +74,11 @@ function writeEquipmentModelJson(path: string, modId: string, assetName: string)
   writeFileSync(path, JSON.stringify(body, null, '\t') + '\n', 'utf8')
 }
 
-function writeEmptyItemTagJson(path: string): void {
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, JSON.stringify({ replace: false, values: [] }, null, '\t') + '\n', 'utf8')
-}
-
 export async function writeModResources(workDir: string, spec: ModSpec): Promise<void> {
   const modId = spec.modId
   const profile = getFabricProfile(spec.minecraftVersion)
   const humanoidArmorApi = profile?.humanoidArmorApi === true
   const assets = join(workDir, 'src/main/resources/assets', modId)
-  const data = join(workDir, 'src/main/resources/data', modId)
   const feats = spec.features ?? []
 
   const langEn: Record<string, string> = {}
@@ -112,7 +106,6 @@ export async function writeModResources(workDir: string, spec: ModSpec): Promise
         await writeSolidPng16(eqHumanoid, r, g, b)
         await writeSolidPng16(eqLegs, r2, g2, b2)
         writeEquipmentModelJson(join(assets, 'equipment', `${f.armorId}.json`), modId, f.armorId)
-        writeEmptyItemTagJson(join(data, 'tags/item', `${f.armorId}_repair.json`))
       } else {
         const layer1 = join(assets, 'textures/models/armor', `${f.armorId}_layer_1.png`)
         const layer2 = join(assets, 'textures/models/armor', `${f.armorId}_layer_2.png`)
