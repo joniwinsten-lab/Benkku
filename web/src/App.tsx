@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 
 type Loader = 'fabric' | 'forge'
 
@@ -87,6 +87,32 @@ function friendlyErrorMessage(raw: string): string {
   return 'Jokin meni pieleen. Voit avata teknisen viestin alta.'
 }
 
+/** Minecraft crash-*.txt / latest.log — luetaan vain selaimessa, ei lähetetä palvelimelle. */
+const CRASH_MAX_READ_BYTES = 1_200_000
+const CRASH_MAX_CHARS = 450_000
+
+async function readMcReportFile(file: File): Promise<{ text: string; note: string | null }> {
+  if (file.size > CRASH_MAX_READ_BYTES) {
+    const tail = file.slice(Math.max(0, file.size - CRASH_MAX_READ_BYTES))
+    const buf = await tail.arrayBuffer()
+    const dec = new TextDecoder('utf-8', { fatal: false })
+    let text = dec.decode(buf)
+    const note = `Tiedosto oli suuri (${(file.size / 1024).toFixed(0)} kt). Luettiin vain loppu (${(CRASH_MAX_READ_BYTES / 1024).toFixed(0)} kt) — virhe on yleensä lopussa.`
+    if (text.length > CRASH_MAX_CHARS) {
+      text = text.slice(-CRASH_MAX_CHARS)
+    }
+    return { text, note }
+  }
+  const textFull = await file.text()
+  if (textFull.length <= CRASH_MAX_CHARS) {
+    return { text: textFull, note: null }
+  }
+  return {
+    text: textFull.slice(-CRASH_MAX_CHARS),
+    note: `Näytetään ja kopioidaan vain viimeiset ${CRASH_MAX_CHARS.toLocaleString('fi-FI')} merkkiä (iso lokitiedosto).`,
+  }
+}
+
 function resolveApiBase(): string {
   const raw = (import.meta.env.VITE_API_URL ?? '').trim().replace(/\/$/, '')
   if (raw) {
@@ -138,6 +164,15 @@ export default function App() {
   const [buildLogExpanded, setBuildLogExpanded] = useState(false)
   const [buildRawError, setBuildRawError] = useState<string | null>(null)
   const [showTechnicalError, setShowTechnicalError] = useState(false)
+
+  const crashFileInputRef = useRef<HTMLInputElement>(null)
+  const crashUploadId = useId()
+  const [crashReportName, setCrashReportName] = useState<string | null>(null)
+  const [crashReportText, setCrashReportText] = useState<string | null>(null)
+  const [crashReportNote, setCrashReportNote] = useState<string | null>(null)
+  const [crashDropHover, setCrashDropHover] = useState(false)
+  const [crashCopyHint, setCrashCopyHint] = useState<string | null>(null)
+  const [crashReportExpanded, setCrashReportExpanded] = useState(true)
 
   const modIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,63}$/.test(modId), [modId])
   const itemIdOk = useMemo(() => /^[a-z][a-z0-9_]{1,40}$/.test(itemId), [itemId])
@@ -470,6 +505,43 @@ export default function App() {
     a.remove()
     URL.revokeObjectURL(url)
   }
+
+  const clearCrashReport = useCallback(() => {
+    setCrashReportName(null)
+    setCrashReportText(null)
+    setCrashReportNote(null)
+    setCrashCopyHint(null)
+    const el = crashFileInputRef.current
+    if (el) el.value = ''
+  }, [])
+
+  const ingestCrashFiles = useCallback(async (list: FileList | null) => {
+    if (!list?.length) return
+    const file = list[0]
+    setCrashCopyHint(null)
+    try {
+      const { text, note } = await readMcReportFile(file)
+      setCrashReportName(file.name)
+      setCrashReportText(text)
+      setCrashReportNote(note)
+      setCrashReportExpanded(true)
+    } catch {
+      setCrashReportName(file.name)
+      setCrashReportText(null)
+      setCrashReportNote('Tiedoston lukeminen epäonnistui (virheellinen teksti?).')
+    }
+  }, [])
+
+  const handleCrashCopy = useCallback(async () => {
+    if (!crashReportText) return
+    try {
+      await navigator.clipboard.writeText(crashReportText)
+      setCrashCopyHint('Kopioitu leikepöydälle — voit liittää tämän Cursor-chattiin (Cmd/Ctrl+V).')
+    } catch {
+      setCrashCopyHint('Selain ei sallinut kopiointia — valitse teksti alla ja kopioi käsin.')
+    }
+    window.setTimeout(() => setCrashCopyHint(null), 5000)
+  }, [crashReportText])
 
   return (
     <div className="mc-world">
@@ -950,6 +1022,161 @@ export default function App() {
                     </pre>
                   ) : null}
                 </div>
+              ) : null}
+            </div>
+
+            <div
+              className="mc-panel-inner"
+              style={{
+                marginTop: '1.25rem',
+                border: '1px solid rgba(200, 160, 80, 0.38)',
+                borderRadius: 8,
+                padding: '0.75rem 1rem',
+                background: 'rgba(45, 32, 8, 0.22)',
+              }}
+              aria-labelledby={`${crashUploadId}-crash-title`}
+            >
+              <h3
+                id={`${crashUploadId}-crash-title`}
+                className="mc-panel-title"
+                style={{ fontSize: '1rem', marginTop: 0 }}
+              >
+                Minecraft-virheraportti tai loki
+              </h3>
+              <p className="mc-hint" style={{ margin: '0.25rem 0 0.65rem' }}>
+                Vedä tähän launcherin / pelin antama <code>crash-…txt</code> tai instanssin{' '}
+                <code>logs/latest.log</code>, tai valitse tiedosto. Teksti pysyy{' '}
+                <strong>vain selaimessasi</strong> — sitä ei lähetetä Benkku-palvelimelle. Kopioi
+                sisältö ja liitä se Cursor-chattiin, niin apuri voi tulkita virheen.
+              </p>
+              <input
+                ref={crashFileInputRef}
+                type="file"
+                accept=".txt,.log,text/plain"
+                style={{ display: 'none' }}
+                aria-label="Valitse Minecraft-virheraportti tai lokitiedosto"
+                onChange={(e) => {
+                  void ingestCrashFiles(e.target.files)
+                }}
+              />
+              <div
+                role="button"
+                tabIndex={0}
+                aria-label="Pudota virheraporttitiedosto tähän"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    crashFileInputRef.current?.click()
+                  }
+                }}
+                onClick={() => crashFileInputRef.current?.click()}
+                onDragOver={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setCrashDropHover(true)
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault()
+                  setCrashDropHover(false)
+                }}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setCrashDropHover(false)
+                  void ingestCrashFiles(e.dataTransfer.files)
+                }}
+                style={{
+                  border: `2px dashed ${crashDropHover ? 'rgba(255, 200, 120, 0.85)' : 'rgba(255, 255, 255, 0.28)'}`,
+                  borderRadius: 8,
+                  padding: '1rem',
+                  textAlign: 'center',
+                  cursor: 'pointer',
+                  background: crashDropHover ? 'rgba(255, 200, 100, 0.08)' : 'rgba(0, 0, 0, 0.2)',
+                  marginBottom: '0.65rem',
+                }}
+              >
+                <p className="mc-hint" style={{ margin: 0 }}>
+                  Pudota tiedosto tähän tai napauta valitaksesi
+                </p>
+              </div>
+              {crashReportName ? (
+                <p className="mc-hint" style={{ margin: '0 0 0.5rem', wordBreak: 'break-all' }}>
+                  <strong>{crashReportName}</strong>
+                  {' · '}
+                  <button
+                    type="button"
+                    className="mc-hint"
+                    style={{
+                      textDecoration: 'underline',
+                      cursor: 'pointer',
+                      background: 'none',
+                      border: 'none',
+                      color: 'inherit',
+                      font: 'inherit',
+                      padding: 0,
+                    }}
+                    onClick={clearCrashReport}
+                  >
+                    Tyhjennä
+                  </button>
+                </p>
+              ) : null}
+              {crashReportNote ? (
+                <p className="mc-hint" style={{ margin: '0 0 0.5rem', color: 'rgba(255, 220, 160, 0.95)' }}>
+                  {crashReportNote}
+                </p>
+              ) : null}
+              {crashCopyHint ? (
+                <p className="mc-hint" style={{ margin: '0 0 0.5rem' }}>
+                  {crashCopyHint}
+                </p>
+              ) : null}
+              {crashReportText ? (
+                <>
+                  <div
+                    style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '0.5rem',
+                      marginBottom: '0.5rem',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <button type="button" className="mc-loader-btn is-on" onClick={() => void handleCrashCopy()}>
+                      Kopioi leikepöydälle
+                    </button>
+                    <button
+                      type="button"
+                      className="mc-loader-btn"
+                      onClick={() => setCrashReportExpanded((v) => !v)}
+                    >
+                      {crashReportExpanded ? 'Piilota esikatselu' : 'Näytä esikatselu'}
+                    </button>
+                  </div>
+                  {crashReportExpanded ? (
+                    <textarea
+                      readOnly
+                      value={crashReportText}
+                      spellCheck={false}
+                      aria-label="Virheraportin sisältö"
+                      style={{
+                        width: '100%',
+                        minHeight: 200,
+                        maxHeight: 360,
+                        boxSizing: 'border-box',
+                        fontSize: '0.78rem',
+                        lineHeight: 1.35,
+                        fontFamily: 'ui-monospace, monospace',
+                        padding: '0.5rem',
+                        background: 'rgba(0,0,0,0.45)',
+                        color: 'inherit',
+                        border: '1px solid rgba(255,255,255,0.15)',
+                        borderRadius: 6,
+                        resize: 'vertical',
+                      }}
+                    />
+                  ) : null}
+                </>
               ) : null}
             </div>
 
