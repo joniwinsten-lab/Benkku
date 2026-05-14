@@ -5,6 +5,8 @@ export const SimpleItemFeatureSchema = z.object({
   type: z.literal('simple_item'),
   itemId: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
   displayName: z.string().trim().min(1).max(64),
+  /** Valinnainen #RRGGBB — tasainen 16×16 tekstuuri inventaarioon */
+  tintHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
 })
 
 export type SimpleItemFeature = z.infer<typeof SimpleItemFeatureSchema>
@@ -16,6 +18,7 @@ export const SimpleArmorFeatureSchema = z.object({
   armorId: z.string().regex(/^[a-z][a-z0-9_]{1,40}$/),
   displayName: z.string().trim().min(1).max(64),
   slot: ArmorSlotSchema,
+  tintHex: z.string().regex(/^#[0-9A-Fa-f]{6}$/).optional(),
 })
 
 export type SimpleArmorFeature = z.infer<typeof SimpleArmorFeatureSchema>

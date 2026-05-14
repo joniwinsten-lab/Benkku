@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { getFabricProfile } from './fabricVersions.js'
 import { renderModFeaturesJava } from './javaFeatures.js'
 import type { ModSpec } from './modspec.js'
+import { writeModResources } from './resourceAssets.js'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
@@ -24,7 +25,7 @@ function safeGradlePropertyValue(s: string): string {
   return s.replace(/[\r\n]/g, ' ').replace(/\\/g, '').replace(/[$]/g, '')
 }
 
-function patchModProject(workDir: string, spec: ModSpec): void {
+async function patchModProject(workDir: string, spec: ModSpec): Promise<void> {
   const profile = getFabricProfile(spec.minecraftVersion)
   if (!profile) {
     throw new Error(`Unsupported minecraft version: ${spec.minecraftVersion}`)
@@ -78,6 +79,8 @@ function patchModProject(workDir: string, spec: ModSpec): void {
 
   const modFeaturesPath = join(workDir, 'src/main/java/fi/benkku/mod/ModFeatures.java')
   writeFileSync(modFeaturesPath, renderModFeaturesJava(spec, profile.javaRelease), 'utf8')
+
+  await writeModResources(workDir, spec)
 }
 
 function findRemappedJar(workDir: string): string | null {
@@ -96,7 +99,7 @@ export async function runFabricBuild(
 
   try {
     cpSync(template, workDir, { recursive: true })
-    patchModProject(workDir, spec)
+    await patchModProject(workDir, spec)
 
     log += `[benkku] workdir ${workDir} mc=${spec.minecraftVersion}\n`
     const wish = spec.wishText?.trim()

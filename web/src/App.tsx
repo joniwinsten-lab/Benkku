@@ -23,15 +23,18 @@ function parseFilenameFromDisposition(header: string | null): string | null {
   return m?.[1] ?? null
 }
 
-type SimpleItemFeature = { type: 'simple_item'; itemId: string; displayName: string }
+const HEX6 = /^#[0-9A-Fa-f]{6}$/
 
 type ArmorSlot = 'helmet' | 'chestplate' | 'leggings' | 'boots'
+
+type SimpleItemFeature = { type: 'simple_item'; itemId: string; displayName: string; tintHex?: string }
 
 type SimpleArmorFeature = {
   type: 'simple_armor'
   armorId: string
   displayName: string
   slot: ArmorSlot
+  tintHex?: string
 }
 
 type ModFeature = SimpleItemFeature | SimpleArmorFeature
@@ -79,6 +82,8 @@ export default function App() {
   const [armorId, setArmorId] = useState('')
   const [armorDisplayName, setArmorDisplayName] = useState('')
   const [armorSlot, setArmorSlot] = useState<ArmorSlot>('helmet')
+  const [itemTintHex, setItemTintHex] = useState('')
+  const [armorTintHex, setArmorTintHex] = useState('')
 
   const [interpretAvailable, setInterpretAvailable] = useState(false)
 
@@ -110,21 +115,34 @@ export default function App() {
       .catch(() => setInterpretAvailable(false))
   }, [apiBase])
 
+  const itemTintOk = useMemo(() => {
+    const t = itemTintHex.trim()
+    if (!t) return true
+    return HEX6.test(t)
+  }, [itemTintHex])
+  const armorTintOk = useMemo(() => {
+    const t = armorTintHex.trim()
+    if (!t) return true
+    return HEX6.test(t)
+  }, [armorTintHex])
+
   const simpleItemFormOk = useMemo(() => {
     if (!simpleItemEnabled) return true
     if (!itemIdOk) return false
     if (itemId === modId) return false
     if (!itemDisplayOk) return false
+    if (!itemTintOk) return false
     return true
-  }, [simpleItemEnabled, itemIdOk, itemId, modId, itemDisplayOk])
+  }, [simpleItemEnabled, itemIdOk, itemId, modId, itemDisplayOk, itemTintOk])
 
   const simpleArmorFormOk = useMemo(() => {
     if (!simpleArmorEnabled) return true
     if (!armorIdOk) return false
     if (armorId === modId) return false
     if (!armorDisplayOk) return false
+    if (!armorTintOk) return false
     return true
-  }, [simpleArmorEnabled, armorIdOk, armorId, modId, armorDisplayOk])
+  }, [simpleArmorEnabled, armorIdOk, armorId, modId, armorDisplayOk, armorTintOk])
 
   const canGenerate = useMemo(() => {
     if (!apiBase) return false
@@ -193,15 +211,21 @@ export default function App() {
     let useWish: string | undefined = wish || undefined
     const manualFeatures: ModFeature[] = []
     if (simpleItemEnabled && itemIdOk && itemId !== modId && itemDisplayOk) {
-      manualFeatures.push({ type: 'simple_item', itemId, displayName: itemDisplayName.trim() })
+      const t = itemTintHex.trim()
+      const f: SimpleItemFeature = { type: 'simple_item', itemId, displayName: itemDisplayName.trim() }
+      if (HEX6.test(t)) f.tintHex = t
+      manualFeatures.push(f)
     }
     if (simpleArmorEnabled && armorIdOk && armorId !== modId && armorDisplayOk) {
-      manualFeatures.push({
+      const t = armorTintHex.trim()
+      const f: SimpleArmorFeature = {
         type: 'simple_armor',
         armorId,
         displayName: armorDisplayName.trim(),
         slot: armorSlot,
-      })
+      }
+      if (HEX6.test(t)) f.tintHex = t
+      manualFeatures.push(f)
     }
     let useFeatures: ModFeature[] | undefined =
       manualFeatures.length > 0 ? manualFeatures : undefined
@@ -257,6 +281,7 @@ export default function App() {
             setSimpleItemEnabled(true)
             setItemId(f.itemId)
             setItemDisplayName(f.displayName)
+            setItemTintHex(f.tintHex ?? '')
           }
           if (f.type === 'simple_armor' && !setArmor) {
             setArmor = true
@@ -264,6 +289,7 @@ export default function App() {
             setArmorId(f.armorId)
             setArmorDisplayName(f.displayName)
             setArmorSlot(f.slot)
+            setArmorTintHex(f.tintHex ?? '')
           }
         }
       } catch {
@@ -390,9 +416,10 @@ export default function App() {
                   MC-versio + Fabric).
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Yksi tai useampi yksinkertainen tavaraesine tai armor-pala (kypärä, rintapanssari,
-                  housut, saappaat): tunnisteet ja nimet voidaan poimia toiveesta. Materiaali on
-                  keinonahka (LEATHER) ja ulkonäkö geneerinen (ei omaa piirrettyä tekstuuria).
+                  Yksi tai useampi tavaraesine tai armor-pala: tunnisteet ja nimet voidaan poimia
+                  toiveesta. Jokaiselle syntyy <strong>16×16</strong> tasainen väritekstuuri
+                  (inventaario + armorin kerrokset); värin voi antaa <code>#RRGGBB</code> tai se
+                  arvotaan id:stä. Ei piirrettyä kuvaa tai 3D-mallia.
                 </li>
               </ul>
               <h3 className="mc-panel-title" style={{ fontSize: '1rem', marginBottom: '0.35rem' }}>
@@ -556,15 +583,28 @@ export default function App() {
                         onChange={(e) => setItemDisplayName(e.target.value)}
                         maxLength={64}
                       />
+                      <label className="mc-label" htmlFor="item-tint">
+                        Väri (valinnainen, #RRGGBB)
+                      </label>
+                      <input
+                        id="item-tint"
+                        className="mc-input"
+                        value={itemTintHex}
+                        onChange={(e) => setItemTintHex(e.target.value)}
+                        placeholder="#aabbcc"
+                        maxLength={7}
+                        spellCheck={false}
+                      />
                       <p className="mc-hint">
-                        Esine-id ei saa olla sama kuin modin id.{' '}
+                        Esine-id ei saa olla sama kuin modin id. Tyhjä väri = arvotaan id:stä.{' '}
                         {!itemIdOk && itemId ? 'Tarkista esine-id.' : ''}
                         {itemIdOk && itemId === modId ? 'Valitse eri id kuin modilla.' : ''}
                         {simpleItemEnabled && !itemDisplayOk ? 'Anna esineelle nimi.' : ''}
+                        {!itemTintOk ? 'Värimuoto: # ja kuusi hex-merkkiä.' : ''}
                       </p>
                     </>
                   ) : (
-                    <p className="mc-hint">Voit lisätä yhden tavallisen esineen ilman tekstuureja.</p>
+                    <p className="mc-hint">Voit lisätä yhden tavaraesineen ja valita värin.</p>
                   )}
                 </div>
 
@@ -619,19 +659,32 @@ export default function App() {
                         onChange={(e) => setArmorDisplayName(e.target.value)}
                         maxLength={64}
                       />
+                      <label className="mc-label" htmlFor="armor-tint">
+                        Väri (valinnainen, #RRGGBB)
+                      </label>
+                      <input
+                        id="armor-tint"
+                        className="mc-input"
+                        value={armorTintHex}
+                        onChange={(e) => setArmorTintHex(e.target.value)}
+                        placeholder="#334422"
+                        maxLength={7}
+                        spellCheck={false}
+                      />
                       <p className="mc-hint">
-                        LEATHER-tason varuste, ei omaa tekstuuria. Id ei saa olla sama kuin modilla
-                        tai tavaraesineellä.{' '}
+                        Oma materiaali + kerrostekstuurit; inventaariossa ja hahmolla näkyy valittu
+                        tasainen väri. Id ei saa törmätä modiin tai tavaraan.{' '}
                         {!armorIdOk && armorId ? 'Tarkista tunnus.' : ''}
                         {armorIdOk && armorId === modId ? 'Valitse eri id kuin modilla.' : ''}
                         {armorIdOk && armorId === itemId && simpleItemEnabled
                           ? 'Armor-id ei saa olla sama kuin tavara-id.'
                           : ''}
                         {simpleArmorEnabled && !armorDisplayOk ? 'Anna nimi.' : ''}
+                        {!armorTintOk ? 'Värimuoto: # ja kuusi hex-merkkiä.' : ''}
                       </p>
                     </>
                   ) : (
-                    <p className="mc-hint">Yksi armor-pala kerrallaan (geneerinen ulkonäkö).</p>
+                    <p className="mc-hint">Yksi armor-pala kerrallaan; väri valinnainen.</p>
                   )}
                 </div>
 

@@ -1,8 +1,9 @@
 import type { ModSpec, SimpleArmorFeature, SimpleItemFeature } from './modspec.js'
+import { vanillaLikeDurability } from './resourceAssets.js'
 
 /**
- * Generoi ModFeatures.java — pohja käyttää `loom.officialMojangMappings()`,
- * joten nimet vastaavat Mojang-mappeja (ResourceLocation, BuiltInRegistries, …).
+ * Generoi ModFeatures.java — pohja käyttää `loom.officialMojangMappings()`.
+ * javaRelease >= 21: ArmorMaterial-tallenne + Holder; alle 21: ArmorMaterial-rajapinta.
  */
 export function renderModFeaturesJava(spec: ModSpec, javaRelease: number): string {
   const feats = spec.features ?? []
@@ -12,12 +13,21 @@ export function renderModFeaturesJava(spec: ModSpec, javaRelease: number): strin
   const lines: string[] = []
   lines.push('package fi.benkku.mod;')
   lines.push('')
+  lines.push('import java.util.EnumMap;')
+  lines.push('import java.util.List;')
   lines.push('import net.minecraft.core.Registry;')
   lines.push('import net.minecraft.core.registries.BuiltInRegistries;')
   lines.push('import net.minecraft.resources.ResourceLocation;')
+  lines.push('import net.minecraft.sounds.SoundEvent;')
+  lines.push('import net.minecraft.sounds.SoundEvents;')
   lines.push('import net.minecraft.world.item.ArmorItem;')
-  lines.push('import net.minecraft.world.item.ArmorMaterials;')
+  lines.push('import net.minecraft.world.item.ArmorMaterial;')
   lines.push('import net.minecraft.world.item.Item;')
+  lines.push('import net.minecraft.world.item.crafting.Ingredient;')
+  const hasArmor21 = javaRelease >= 21 && armors.length > 0
+  if (hasArmor21) {
+    lines.push('import net.minecraft.core.Holder;')
+  }
   lines.push('')
   lines.push('public final class ModFeatures {')
   lines.push('\tprivate ModFeatures() {}')
@@ -26,7 +36,11 @@ export function renderModFeaturesJava(spec: ModSpec, javaRelease: number): strin
     emitItemBlock(lines, spec.modId, javaRelease, it)
   }
   for (const ar of armors) {
-    emitArmorBlock(lines, spec.modId, javaRelease, ar)
+    if (javaRelease >= 21) {
+      emitArmorBlock21(lines, spec.modId, ar)
+    } else {
+      emitArmorBlock20(lines, spec.modId, ar)
+    }
   }
   lines.push('\t}')
   lines.push('}')
@@ -54,38 +68,45 @@ function emitItemBlock(
   lines.push('\t\t}')
 }
 
-function emitArmorBlock(
-  lines: string[],
-  modId: string,
-  javaRelease: number,
-  ar: SimpleArmorFeature,
-): void {
-  const varName = `id_${ar.armorId}`
-  const ns = JSON.stringify(modId)
-  const path = JSON.stringify(ar.armorId)
-  const locInit = resourceLocationInit(javaRelease, ns, path)
-  const armorType = armorTypeExpr(ar.slot)
+function emitArmorBlock21(lines: string[], modId: string, ar: SimpleArmorFeature): void {
+  const matKey = `${ar.armorId}_material`
+  const matRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(matKey))
+  const layerRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(ar.armorId))
+  const itemRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(ar.armorId))
+  const typeName = armorTypeSimpleName(ar.slot)
+
   lines.push('\t\t{')
-  lines.push(`\t\t\tResourceLocation ${varName} = ${locInit};`)
+  lines.push(`\t\t\tEnumMap<ArmorItem.Type, Integer> def_${ar.armorId} = new EnumMap<>(ArmorItem.Type.class);`)
+  lines.push(`\t\t\tdef_${ar.armorId}.put(ArmorItem.Type.BOOTS, Integer.valueOf(1));`)
+  lines.push(`\t\t\tdef_${ar.armorId}.put(ArmorItem.Type.LEGGINGS, Integer.valueOf(2));`)
+  lines.push(`\t\t\tdef_${ar.armorId}.put(ArmorItem.Type.CHESTPLATE, Integer.valueOf(3));`)
+  lines.push(`\t\t\tdef_${ar.armorId}.put(ArmorItem.Type.HELMET, Integer.valueOf(1));`)
+  lines.push(`\t\t\tdef_${ar.armorId}.put(ArmorItem.Type.BODY, Integer.valueOf(3));`)
   lines.push(
-    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, ${varName}, new ArmorItem(ArmorMaterials.LEATHER, ${armorType}, new Item.Properties()));`,
+    `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(def_${ar.armorId}, 15, SoundEvents.ARMOR_EQUIP_LEATHER, () -> Ingredient.EMPTY, List.of(new ArmorMaterial.Layer(${layerRl}, "", false)), 0.0F, 0.0F);`,
   )
   lines.push(
-    `\t\t\tBenkkuMod.LOGGER.info("Registered armor {} ({})", ${varName}, ${JSON.stringify(ar.displayName)});`,
+    `\t\t\tHolder<ArmorMaterial> h_${ar.armorId} = Registry.registerForHolder(BuiltInRegistries.ARMOR_MATERIAL, ${matRl}, mat_${ar.armorId});`,
+  )
+  lines.push(
+    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, ${itemRl}, new ArmorItem(h_${ar.armorId}, ArmorItem.Type.${typeName}, new Item.Properties().durability(ArmorItem.Type.${typeName}.getDurability(15))));`,
+  )
+  lines.push(
+    `\t\t\tBenkkuMod.LOGGER.info("Registered armor {} ({})", ${itemRl}, ${JSON.stringify(ar.displayName)});`,
   )
   lines.push('\t\t}')
 }
 
-function armorTypeExpr(slot: SimpleArmorFeature['slot']): string {
+function armorTypeSimpleName(slot: SimpleArmorFeature['slot']): string {
   switch (slot) {
     case 'helmet':
-      return 'ArmorItem.Type.HELMET'
+      return 'HELMET'
     case 'chestplate':
-      return 'ArmorItem.Type.CHESTPLATE'
+      return 'CHESTPLATE'
     case 'leggings':
-      return 'ArmorItem.Type.LEGGINGS'
+      return 'LEGGINGS'
     case 'boots':
-      return 'ArmorItem.Type.BOOTS'
+      return 'BOOTS'
     default: {
       const _x: never = slot
       return _x
@@ -93,9 +114,69 @@ function armorTypeExpr(slot: SimpleArmorFeature['slot']): string {
   }
 }
 
-function resourceLocationInit(javaRelease: number, nsLiteral: string, pathLiteral: string): string {
+function emitArmorBlock20(lines: string[], modId: string, ar: SimpleArmorFeature): void {
+  const typeName = armorTypeSimpleName(ar.slot)
+  const dura = vanillaLikeDurability(ar.slot)
+  const nameLit = JSON.stringify(ar.displayName)
+  const armorIdLit = JSON.stringify(ar.armorId)
+
+  lines.push('\t\t{')
+  lines.push(
+    `\t\t\tResourceLocation id_${ar.armorId} = ${resourceLocationExpr(17, JSON.stringify(modId), JSON.stringify(ar.armorId))};`,
+  )
+  lines.push(
+    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, id_${ar.armorId}, new ArmorItem(new ArmorMaterial() {`,
+  )
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic int getDurabilityForType(ArmorItem.Type t) {')
+  lines.push(`\t\t\t\t\tif (t == ArmorItem.Type.${typeName}) return ${dura};`)
+  lines.push('\t\t\t\t\treturn 1;')
+  lines.push('\t\t\t\t}')
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic int getDefenseForType(ArmorItem.Type t) {')
+  lines.push(defenseSwitchLines(ar.slot, '\t\t\t\t\t'))
+  lines.push('\t\t\t\t}')
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic int getEnchantmentValue() { return 15; }')
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic SoundEvent getEquipSound() { return SoundEvents.ARMOR_EQUIP_LEATHER; }')
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic Ingredient getRepairIngredient() { return Ingredient.EMPTY; }')
+  lines.push('\t\t\t\t@Override')
+  lines.push(`\t\t\t\tpublic String getName() { return ${armorIdLit}; }`)
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic float getToughness() { return 0.0F; }')
+  lines.push('\t\t\t\t@Override')
+  lines.push('\t\t\t\tpublic float getKnockbackResistance() { return 0.0F; }')
+  lines.push(
+    `\t\t\t}, ArmorItem.Type.${typeName}, new Item.Properties().durability(${dura})));`,
+  )
+  lines.push(`\t\t\tBenkkuMod.LOGGER.info("Registered armor {} ({})", id_${ar.armorId}, ${nameLit});`)
+  lines.push('\t\t}')
+}
+
+function defenseSwitchLines(slot: SimpleArmorFeature['slot'], indent: string): string {
+  const lines: string[] = []
+  const pairs: Array<{ t: string; v: number }> = [
+    { t: 'HELMET', v: slot === 'helmet' ? 1 : 0 },
+    { t: 'CHESTPLATE', v: slot === 'chestplate' ? 3 : 0 },
+    { t: 'LEGGINGS', v: slot === 'leggings' ? 2 : 0 },
+    { t: 'BOOTS', v: slot === 'boots' ? 1 : 0 },
+  ]
+  for (const p of pairs) {
+    lines.push(`${indent}if (t == ArmorItem.Type.${p.t}) return ${p.v};`)
+  }
+  lines.push(`${indent}return 0;`)
+  return lines.join('\n')
+}
+
+function resourceLocationExpr(javaRelease: number, nsLiteral: string, pathLiteral: string): string {
   if (javaRelease >= 21) {
     return `ResourceLocation.fromNamespaceAndPath(${nsLiteral}, ${pathLiteral})`
   }
   return `new ResourceLocation(${nsLiteral}, ${pathLiteral})`
+}
+
+function resourceLocationInit(javaRelease: number, nsLiteral: string, pathLiteral: string): string {
+  return resourceLocationExpr(javaRelease, nsLiteral, pathLiteral)
 }
