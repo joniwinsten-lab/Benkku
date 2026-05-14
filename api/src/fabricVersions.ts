@@ -3,6 +3,15 @@
  * Java-käännös: 1.20.x → release 17, 1.21.x → 21 (--release ajetaan JDK 21:llä).
  */
 export const FABRIC_VERSION_PROFILES = {
+  '1.21.11': {
+    minecraft: '1.21.11',
+    loader: '0.19.2',
+    loom: '1.16-SNAPSHOT',
+    fabricApi: '0.141.3+1.21.11',
+    minecraftDep: '~1.21.11',
+    javaDep: '>=21',
+    javaRelease: 21,
+  },
   '1.21.1': {
     minecraft: '1.21.1',
     loader: '0.19.2',

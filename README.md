@@ -36,12 +36,12 @@ npm run dev
 
 Oletusportti: **8787**. Terveys: `GET http://127.0.0.1:8787/health`.
 
-- `POST /v1/build` — JSON: `{ "loader": "fabric", "minecraftVersion": "1.21.1", "modId": "benkku_mod", "displayName": "Benkun modi" }` → palauttaa `{ "jobId": "..." }` (HTTP 202).
+- `POST /v1/build` — JSON: `{ "loader": "fabric", "minecraftVersion": "1.21.11", "modId": "benkku_mod", "displayName": "Benkun modi" }` → palauttaa `{ "jobId": "..." }` (HTTP 202).
 - `GET /v1/build/:id` — tila ja lokitail.
 - `GET /v1/build/:id/jar` — valmis `.jar` (kun tila on `done`). `Content-Type: application/octet-stream` (Chromen varoitusten lieventämiseksi).
 - `GET /v1/build/:id/zip` — zip, jonka sisällä sama `.jar` sopivalla tiedostonimellä (usein helpompi Chromessa kuin suora `.jar`).
 
-**Tuki tällä hetkellä:** **Fabric** ja Minecraft **1.21.1, 1.21, 1.20.4, 1.20.1** (katso `api/src/fabricVersions.ts`). Forge tulossa.
+**Tuki tällä hetkellä:** **Fabric** ja Minecraft **1.21.11, 1.21.1, 1.21, 1.20.4, 1.20.1** (katso `api/src/fabricVersions.ts`). Forge tulossa.
 
 **CORS:** aseta ympäristömuuttuja `CORS_ORIGINS` pilkuilla eroteltuina sallituiksi origeiksi, esim. `http://127.0.0.1:5173,https://joniwinsten-lab.github.io`.
 
@@ -72,5 +72,5 @@ VITE_BASE_PATH=/Benkku/ npm run build
 
 1. Avaa GitHub Pages -linkki (tai paikallinen dev, jos käytät sitä).
 2. Varmista, että **VITE_API_URL** on asetettu (tuotannossa repo secret), jotta **Generoi .jar** ei ole harmaana.
-3. Valitse **Minecraft-versio** (1.21.1, 1.21, 1.20.4 tai 1.20.1) ja **Fabric** kuten launcherissa.
+3. Valitse **Minecraft-versio** (1.21.11, 1.21.1, 1.21, 1.20.4 tai 1.20.1) ja **Fabric** kuten launcherissa.
 4. Lataa **zip** tai `.jar`, pura zip tarvittaessa ja kopioi `.jar` tiedostoon `%appdata%\.minecraft\mods` (tai Prism-instanssin `mods`).

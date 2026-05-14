@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 type Loader = 'fabric' | 'forge'
 
 /** Fabric — synkassa API:n `fabricVersions.ts` kanssa */
-const MC_VERSIONS = ['1.21.1', '1.21', '1.20.4', '1.20.1'] as const
+const MC_VERSIONS = ['1.21.11', '1.21.1', '1.21', '1.20.4', '1.20.1'] as const
 
 /** Esitäytetty toive — paina „Kokeile tätä toivetta”, sitten Generoi modi. */
 const DEMO_WISH_TEXT =
@@ -109,7 +109,7 @@ export default function App() {
   const [splash] = useState(pickSplash)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  const [mcVersion, setMcVersion] = useState<(typeof MC_VERSIONS)[number]>('1.21.1')
+  const [mcVersion, setMcVersion] = useState<(typeof MC_VERSIONS)[number]>('1.21.11')
   const [modId, setModId] = useState('benkku_mod')
   const [displayName, setDisplayName] = useState('Benkun modi')
   const [wishText, setWishText] = useState('')

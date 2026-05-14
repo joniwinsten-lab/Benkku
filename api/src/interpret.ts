@@ -49,7 +49,7 @@ Valinnaiset: wishSummary (string), warnings (string[]).
 Säännöt:
 - Tuote: vain tavaraesineet (simple_item) ja armor (simple_armor). Ei blokkeja, biomeja, bosseja tms.
 - loader: käytä aina "fabric" ellei käyttäjä nimenomaan pyydä forgea.
-- minecraftVersion: täsmälleen yksi näistä: ${SUPPORTED_MINECRAFT_VERSIONS.join(', ')} — oletus 1.21.1 jos epäselvä.
+- minecraftVersion: täsmälleen yksi näistä: ${SUPPORTED_MINECRAFT_VERSIONS.join(', ')} — oletus 1.21.11 jos epäselvä.
 - modId: vain pienet kirjaimet, numerot ja alaviiva, alkaa kirjaimella.
 - displayName: lyhyt näyttönimi suomeksi tai englanniksi.
 - wishText: lyhennä käyttäjän toive max 2000 merkkiin; säilytä idea.
