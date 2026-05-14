@@ -145,7 +145,7 @@ function emitArmorBlockHumanoid(
     `\t\t\tResourceKey<EquipmentAsset> asset_${ar.armorId} = ResourceKey.create(EquipmentAssets.ROOT_ID, ${assetRl});`,
   )
   lines.push(
-    `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(15, Map.of(ArmorType.BOOTS, Integer.valueOf(1), ArmorType.LEGGINGS, Integer.valueOf(2), ArmorType.CHESTPLATE, Integer.valueOf(3), ArmorType.HELMET, Integer.valueOf(1)), 15, SoundEvents.ARMOR_EQUIP_LEATHER, 0.0F, 0.0F, ItemTags.LEATHER, asset_${ar.armorId});`,
+    `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(15, Map.of(ArmorType.BOOTS, Integer.valueOf(1), ArmorType.LEGGINGS, Integer.valueOf(2), ArmorType.CHESTPLATE, Integer.valueOf(3), ArmorType.HELMET, Integer.valueOf(1)), 15, SoundEvents.ARMOR_EQUIP_LEATHER, 0.0F, 0.0F, ItemTags.REPAIRS_LEATHER_ARMOR, asset_${ar.armorId});`,
   )
   lines.push(`\t\t\t${idClass} item_${ar.armorId} = ${itemRl};`)
   lines.push(
