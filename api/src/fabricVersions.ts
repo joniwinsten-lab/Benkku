@@ -6,11 +6,11 @@ export const FABRIC_VERSION_PROFILES = {
   '1.21.11': {
     minecraft: '1.21.11',
     loom: '1.16-SNAPSHOT',
-    fabricApi: '0.141.3+1.21.11',
+    fabricApi: '0.140.2+1.21.11',
     minecraftDep: '~1.21.11',
     javaDep: '>=21',
     javaRelease: 21,
-    fabricApiModJsonDep: '>=0.141.0',
+    fabricApiModJsonDep: '>=0.140.0',
     /** ArmorMaterial + ArmorItem (vanha) poistui; käytä ArmorType + Item#humanoidArmor + equipment-JSON. */
     humanoidArmorApi: true,
     /** Mojang 1.21.11+: luokka ResourceLocation → Identifier (official mappings). */
