@@ -30,6 +30,10 @@ export function renderModFeaturesJava(
 
   lines.push('import net.minecraft.core.Registry;')
   lines.push('import net.minecraft.core.registries.BuiltInRegistries;')
+  if (mojangResourceId === 'identifier') {
+    lines.push('import net.minecraft.core.registries.Registries;')
+    lines.push('import net.minecraft.resources.ResourceKey;')
+  }
   lines.push(
     mojangResourceId === 'identifier'
       ? 'import net.minecraft.resources.Identifier;'
@@ -39,7 +43,9 @@ export function renderModFeaturesJava(
 
   if (useHumanoidArmor) {
     lines.push('import java.util.Map;')
-    lines.push('import net.minecraft.resources.ResourceKey;')
+    if (mojangResourceId !== 'identifier') {
+      lines.push('import net.minecraft.resources.ResourceKey;')
+    }
     lines.push('import net.minecraft.sounds.SoundEvents;')
     lines.push('import net.minecraft.tags.ItemTags;')
     lines.push('import net.minecraft.world.item.equipment.ArmorMaterial;')
@@ -117,9 +123,16 @@ function emitItemBlock(
   const idClass = idTypeName(mojang)
   lines.push('\t\t{')
   lines.push(`\t\t\t${idClass} ${varName} = ${locInit};`)
-  lines.push(
-    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, ${varName}, new Item(new Item.Properties()));`,
-  )
+  if (mojang === 'identifier') {
+    lines.push(`\t\t\tResourceKey<Item> key_${it.itemId} = ResourceKey.create(Registries.ITEM, ${varName});`)
+    lines.push(
+      `\t\t\tRegistry.register(BuiltInRegistries.ITEM, key_${it.itemId}, new Item(new Item.Properties().setId(key_${it.itemId})));`,
+    )
+  } else {
+    lines.push(
+      `\t\t\tRegistry.register(BuiltInRegistries.ITEM, ${varName}, new Item(new Item.Properties()));`,
+    )
+  }
   lines.push(
     `\t\t\tBenkkuMod.LOGGER.info("Registered item {} ({})", ${varName}, ${JSON.stringify(it.displayName)});`,
   )
@@ -149,7 +162,10 @@ function emitArmorBlockHumanoid(
   )
   lines.push(`\t\t\t${idClass} item_${ar.armorId} = ${itemRl};`)
   lines.push(
-    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, item_${ar.armorId}, new Item(new Item.Properties().humanoidArmor(mat_${ar.armorId}, ${armorType}).durability(${dura})));`,
+    `\t\t\tResourceKey<Item> itemKey_${ar.armorId} = ResourceKey.create(Registries.ITEM, item_${ar.armorId});`,
+  )
+  lines.push(
+    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, itemKey_${ar.armorId}, new Item(new Item.Properties().setId(itemKey_${ar.armorId}).humanoidArmor(mat_${ar.armorId}, ${armorType}).durability(${dura})));`,
   )
   lines.push(
     `\t\t\tBenkkuMod.LOGGER.info("Registered armor {} ({})", item_${ar.armorId}, ${JSON.stringify(ar.displayName)});`,
