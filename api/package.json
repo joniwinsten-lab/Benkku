@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.19.7",
+    "fflate": "^0.8.2",
     "hono": "^4.11.4",
     "jimp": "^1.6.0",
     "zod": "^3.25.76"

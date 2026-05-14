@@ -236,8 +236,8 @@ export default function App() {
           const w = j.spec?.wishText?.trim()
           setBuildMessage(
             w
-              ? `Valmis. Lataa .jar alta. (${w.slice(0, 72)}${w.length > 72 ? '…' : ''})`
-              : 'Valmis. Lataa .jar alta.',
+              ? `Valmis. Lataa alta zip (suositus) tai .jar. (${w.slice(0, 60)}${w.length > 60 ? '…' : ''})`
+              : 'Valmis. Lataa alta zip (suositus) tai suora .jar.',
           )
           return
         }
@@ -426,9 +426,10 @@ export default function App() {
     }
   }
 
-  const handleDownload = async () => {
+  const handleDownload = async (kind: 'zip' | 'jar') => {
     if (!apiBase || !jobId) return
-    const r = await fetch(`${apiBase}/v1/build/${jobId}/jar`)
+    const path = kind === 'zip' ? `/v1/build/${jobId}/zip` : `/v1/build/${jobId}/jar`
+    const r = await fetch(`${apiBase}${path}`)
     if (!r.ok) {
       const raw = `Lataus epäonnistui (${r.status})`
       setBuildRawError(raw)
@@ -436,8 +437,8 @@ export default function App() {
       return
     }
     const blob = await r.blob()
-    const name =
-      parseFilenameFromDisposition(r.headers.get('content-disposition')) ?? `${modId}.jar`
+    const fallback = kind === 'zip' ? `${modId}.zip` : `${modId}.jar`
+    const name = parseFilenameFromDisposition(r.headers.get('content-disposition')) ?? fallback
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -494,8 +495,10 @@ export default function App() {
                   <code>.jar</code>-tiedoston. Käännös voi kestää useista minuuteista yli kymmeneen.
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Kun näet <strong>Lataa .jar</strong>, tallenna tiedosto ja kopioi se pelin{' '}
-                  <code>mods</code>-kansioon, sitten käynnistä Minecraft uudelleen.
+                  Kun modi on valmis, lataa ensisijaisesti <strong>zip</strong> (sisältää{' '}
+                  <code>.jar</code>
+                  -tiedoston). Pura zip ja siirrä <code>.jar</code> pelin <code>mods</code>-kansioon. Zip välttää
+                  usein Chromen varoitukset suorasta <code>.jar</code>-latauksesta.
                 </li>
               </ol>
             </div>
@@ -790,13 +793,32 @@ export default function App() {
                 Generoi modi
               </button>
               {buildPhase === 'done' && jobId ? (
-                <button
-                  type="button"
-                  className="mc-loader-btn is-on"
-                  onClick={() => void handleDownload()}
-                >
-                  Lataa .jar
-                </button>
+                <>
+                  <div
+                    className="mc-loader-row"
+                    style={{ flexWrap: 'wrap', justifyContent: 'center', gap: '0.5rem', width: '100%' }}
+                  >
+                    <button
+                      type="button"
+                      className="mc-loader-btn is-on"
+                      onClick={() => void handleDownload('zip')}
+                    >
+                      Lataa zipinä
+                    </button>
+                    <button
+                      type="button"
+                      className="mc-loader-btn"
+                      onClick={() => void handleDownload('jar')}
+                    >
+                      Lataa .jar
+                    </button>
+                  </div>
+                  <p className="mc-hint" style={{ textAlign: 'center', margin: 0, fontSize: '0.72rem' }}>
+                    Chrome saattaa varoittaa suorasta <code>.jar</code>-tiedostosta — valitse usein{' '}
+                    <strong>Säilytä</strong> / „silti säilytä”, tai käytä zip-latausta. Pura zip ja kopioi{' '}
+                    <code>.jar</code> kansioon <code>mods</code>.
+                  </p>
+                </>
               ) : null}
               {(buildPhase === 'queued' || buildPhase === 'running') && jobId ? (
                 <p className="mc-hint" style={{ textAlign: 'center', margin: 0, width: '100%' }}>
@@ -954,8 +976,8 @@ export default function App() {
         </section>
 
         <footer className="mc-footnote">
-          Windows: kopioi valmis <code>.jar</code> kansioon <code>mods</code>. Sama Minecraft-versio
-          ja Fabric asennettuna. Forge-tuki tulossa myöhemmin.
+          Windows: pura zip jos latasit sen, kopioi <code>.jar</code> kansioon <code>mods</code>. Sama
+          Minecraft-versio ja Fabric asennettuna. Forge-tuki tulossa myöhemmin.
         </footer>
       </div>
     </div>

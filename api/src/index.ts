@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { zipSync } from 'fflate'
 import { randomUUID } from 'node:crypto'
 import { SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
 import { ModSpecSchema, validateModSpecForBuild } from './modspec.js'
@@ -45,6 +46,11 @@ function jarAttachmentFilename(j: Job): string {
   const core = [modId, minecraftVersion, title].filter(Boolean).join('_')
   const withJar = `${core}.jar`.replace(/[^a-zA-Z0-9._-]/g, '_')
   return withJar.length >= 6 ? withJar : gradleSafe
+}
+
+function zipAttachmentFilename(jarName: string): string {
+  const base = jarName.replace(/[^a-zA-Z0-9._-]/g, '_')
+  return base.toLowerCase().endsWith('.jar') ? `${base.slice(0, -4)}.zip` : `${base}.zip`
 }
 
 const app = new Hono()
@@ -176,6 +182,29 @@ app.get('/v1/build/:id', (c) => {
   })
 })
 
+/** Zip sisältää yhden .jar-tiedoston — Chromen suora .jar-lataus estyy usein; pura zip mods-kansioon. */
+app.get('/v1/build/:id/zip', (c) => {
+  const id = c.req.param('id')
+  const j = jobs.get(id)
+  if (!j) return c.json({ error: 'Tuntematon työ' }, 404)
+  if (j.status !== 'done' || !j.jarBytes || !j.fileName) {
+    return c.json({ error: 'Ei valmis', status: j.status }, 409)
+  }
+
+  const jarName = jarAttachmentFilename(j)
+  const zipName = zipAttachmentFilename(jarName)
+  const jarU8 = new Uint8Array(j.jarBytes)
+  const zipped = zipSync({ [jarName]: jarU8 }, { level: 6 })
+
+  return new Response(Buffer.from(zipped), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${zipName}"`,
+    },
+  })
+})
+
 app.get('/v1/build/:id/jar', (c) => {
   const id = c.req.param('id')
   const j = jobs.get(id)
@@ -188,7 +217,8 @@ app.get('/v1/build/:id/jar', (c) => {
   return new Response(new Uint8Array(j.jarBytes), {
     status: 200,
     headers: {
-      'Content-Type': 'application/java-archive',
+      /** application/java-archive laukaisee usein Chromen varoituksen; octet-stream lieventää joskus. */
+      'Content-Type': 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${safeName}"`,
     },
   })
