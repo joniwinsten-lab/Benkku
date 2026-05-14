@@ -13,6 +13,8 @@ export const FABRIC_VERSION_PROFILES = {
     javaRelease: 21,
     /** ArmorMaterial + ArmorItem (vanha) poistui; käytä ArmorType + Item#humanoidArmor + equipment-JSON. */
     humanoidArmorApi: true,
+    /** Mojang 1.21.11+: luokka ResourceLocation → Identifier (official mappings). */
+    mojangResourceId: 'identifier',
   },
   '1.21.1': {
     minecraft: '1.21.1',
@@ -23,6 +25,7 @@ export const FABRIC_VERSION_PROFILES = {
     javaDep: '>=21',
     javaRelease: 21,
     humanoidArmorApi: false,
+    mojangResourceId: 'resource_location',
   },
   '1.21': {
     minecraft: '1.21',
@@ -33,6 +36,7 @@ export const FABRIC_VERSION_PROFILES = {
     javaDep: '>=21',
     javaRelease: 21,
     humanoidArmorApi: false,
+    mojangResourceId: 'resource_location',
   },
   '1.20.4': {
     minecraft: '1.20.4',
@@ -43,6 +47,7 @@ export const FABRIC_VERSION_PROFILES = {
     javaDep: '>=17',
     javaRelease: 17,
     humanoidArmorApi: false,
+    mojangResourceId: 'resource_location',
   },
   '1.20.1': {
     minecraft: '1.20.1',
@@ -53,6 +58,7 @@ export const FABRIC_VERSION_PROFILES = {
     javaDep: '>=17',
     javaRelease: 17,
     humanoidArmorApi: false,
+    mojangResourceId: 'resource_location',
   },
 } as const
 

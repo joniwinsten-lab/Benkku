@@ -80,7 +80,12 @@ async function patchModProject(workDir: string, spec: ModSpec): Promise<void> {
   const modFeaturesPath = join(workDir, 'src/main/java/fi/benkku/mod/ModFeatures.java')
   writeFileSync(
     modFeaturesPath,
-    renderModFeaturesJava(spec, profile.javaRelease, profile.humanoidArmorApi),
+    renderModFeaturesJava(
+      spec,
+      profile.javaRelease,
+      profile.humanoidArmorApi,
+      profile.mojangResourceId,
+    ),
     'utf8',
   )
 

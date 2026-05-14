@@ -5,10 +5,6 @@ type Loader = 'fabric' | 'forge'
 /** Fabric — synkassa API:n `fabricVersions.ts` kanssa */
 const MC_VERSIONS = ['1.21.11', '1.21.1', '1.21', '1.20.4', '1.20.1'] as const
 
-/** Esitäytetty toive — paina „Kokeile tätä toivetta”, sitten Generoi modi. */
-const DEMO_WISH_TEXT =
-  'Haluan Fabric-modin: punainen omena-tavara (#cc5533) ja tummanvihreä nahkakypärä (#2d4a22). Modin id benkku_demo ja näyttönimi Benkun testimodi.'
-
 const SPLASHES = [
   'Koodi kuten kivi!',
   'Java Edition!',
@@ -490,9 +486,9 @@ export default function App() {
                   <strong>Fabric</strong> on asennettuna.
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Kirjoita toive alla olevaan kenttään (tai paina <strong>Kokeile tätä toivetta</strong>), sitten{' '}
-                  <strong>Generoi modi</strong>. Tekoäly täyttää tekniset kentät; palvelin rakentaa Fabric-modin{' '}
-                  <code>.jar</code>-tiedoston. Käännös voi kestää useista minuuteista yli kymmeneen.
+                  Kirjoita toive alla olevaan kenttään, sitten <strong>Generoi modi</strong>. Tekoäly täyttää
+                  tekniset kentät; palvelin rakentaa Fabric-modin <code>.jar</code>-tiedoston. Käännös voi kestää
+                  useista minuuteista yli kymmeneen.
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
                   Kun modi on valmis, lataa ensisijaisesti <strong>zip</strong> (sisältää{' '}
@@ -522,18 +518,6 @@ export default function App() {
                 placeholder="Esim. haluan nahkaisen kypärän ja omenan tavaraluetteloon, modin nimeksi Olipa kerran…"
                 maxLength={2000}
               />
-              <div className="mc-loader-row" style={{ marginTop: '0.35rem' }}>
-                <button
-                  type="button"
-                  className="mc-loader-btn"
-                  onClick={() => {
-                    setWishText(DEMO_WISH_TEXT)
-                    setShowAdvanced(true)
-                  }}
-                >
-                  Kokeile tätä toivetta
-                </button>
-              </div>
               <p className="mc-hint">
                 {interpretAvailable
                   ? 'Tekoäly lukee tekstin ennen generointia ja täyttää modin nimen, tunnisteen ja version.'

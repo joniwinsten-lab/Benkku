@@ -1,16 +1,20 @@
 import type { ModSpec, SimpleArmorFeature, SimpleItemFeature } from './modspec.js'
 import { vanillaLikeDurability } from './resourceAssets.js'
 
+/** Mojang official mappings: 1.21.11+ käyttää Identifieriä, aiemmat ResourceLocationia. */
+export type MojangResourceId = 'identifier' | 'resource_location'
+
 /**
  * Generoi ModFeatures.java — `loom.officialMojangMappings()`.
- * 1.21.11+: ArmorType + Item#humanoidArmor + equipment-resurssit (humanoidArmorApi).
- * 1.21.1 / 1.21 (Java 21): ArmorMaterial-tallenne + BuiltInRegistries.ARMOR_MATERIAL + ArmorItem.
- * 1.20.x: ArmorMaterial-rajapinta-anonyymi + ArmorItem.
+ * 1.21.11+: Identifier + ArmorType + Item#humanoidArmor + equipment-resurssit.
+ * 1.21.1 / 1.21 (Java 21): ResourceLocation + vanha armor-API.
+ * 1.20.x: ResourceLocation + ArmorMaterial-rajapinta.
  */
 export function renderModFeaturesJava(
   spec: ModSpec,
   javaRelease: number,
   humanoidArmorApi: boolean,
+  mojangResourceId: MojangResourceId,
 ): string {
   const feats = spec.features ?? []
   const items = feats.filter((f): f is SimpleItemFeature => f.type === 'simple_item')
@@ -26,7 +30,11 @@ export function renderModFeaturesJava(
 
   lines.push('import net.minecraft.core.Registry;')
   lines.push('import net.minecraft.core.registries.BuiltInRegistries;')
-  lines.push('import net.minecraft.resources.ResourceLocation;')
+  lines.push(
+    mojangResourceId === 'identifier'
+      ? 'import net.minecraft.resources.Identifier;'
+      : 'import net.minecraft.resources.ResourceLocation;',
+  )
   lines.push('import net.minecraft.world.item.Item;')
 
   if (useHumanoidArmor) {
@@ -60,11 +68,11 @@ export function renderModFeaturesJava(
   lines.push('\tprivate ModFeatures() {}')
   lines.push('\tpublic static void register() {')
   for (const it of items) {
-    emitItemBlock(lines, spec.modId, javaRelease, it)
+    emitItemBlock(lines, spec.modId, javaRelease, it, mojangResourceId)
   }
   for (const ar of armors) {
     if (useHumanoidArmor) {
-      emitArmorBlockHumanoid(lines, spec.modId, ar)
+      emitArmorBlockHumanoid(lines, spec.modId, ar, mojangResourceId)
     } else if (javaRelease >= 21) {
       emitArmorBlock21(lines, spec.modId, ar)
     } else {
@@ -76,18 +84,39 @@ export function renderModFeaturesJava(
   return lines.join('\n') + '\n'
 }
 
+function idTypeName(mojang: MojangResourceId): string {
+  return mojang === 'identifier' ? 'Identifier' : 'ResourceLocation'
+}
+
+function idExpr(
+  javaRelease: number,
+  mojang: MojangResourceId,
+  nsLiteral: string,
+  pathLiteral: string,
+): string {
+  if (mojang === 'identifier') {
+    return `Identifier.fromNamespaceAndPath(${nsLiteral}, ${pathLiteral})`
+  }
+  if (javaRelease >= 21) {
+    return `ResourceLocation.fromNamespaceAndPath(${nsLiteral}, ${pathLiteral})`
+  }
+  return `new ResourceLocation(${nsLiteral}, ${pathLiteral})`
+}
+
 function emitItemBlock(
   lines: string[],
   modId: string,
   javaRelease: number,
   it: SimpleItemFeature,
+  mojang: MojangResourceId,
 ): void {
   const varName = `id_${it.itemId}`
   const ns = JSON.stringify(modId)
   const path = JSON.stringify(it.itemId)
-  const locInit = resourceLocationInit(javaRelease, ns, path)
+  const locInit = idExpr(javaRelease, mojang, ns, path)
+  const idClass = idTypeName(mojang)
   lines.push('\t\t{')
-  lines.push(`\t\t\tResourceLocation ${varName} = ${locInit};`)
+  lines.push(`\t\t\t${idClass} ${varName} = ${locInit};`)
   lines.push(
     `\t\t\tRegistry.register(BuiltInRegistries.ITEM, ${varName}, new Item(new Item.Properties()));`,
   )
@@ -98,26 +127,33 @@ function emitItemBlock(
 }
 
 /** Minecraft 1.21.11+ — ks. Fabric docs „Custom Armor 1.21.11”. */
-function emitArmorBlockHumanoid(lines: string[], modId: string, ar: SimpleArmorFeature): void {
-  const itemRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(ar.armorId))
+function emitArmorBlockHumanoid(
+  lines: string[],
+  modId: string,
+  ar: SimpleArmorFeature,
+  mojang: MojangResourceId,
+): void {
+  const idClass = idTypeName(mojang)
+  const itemRl = idExpr(21, mojang, JSON.stringify(modId), JSON.stringify(ar.armorId))
   const armorType = armorTypeHumanoid(ar.slot)
   const dura = vanillaLikeDurability(ar.slot)
   const repairTagPath = `${ar.armorId}_repair`
   const repairTagLit = JSON.stringify(repairTagPath)
   const modLit = JSON.stringify(modId)
-  const assetRl = resourceLocationExpr(21, modLit, JSON.stringify(ar.armorId))
+  const assetRl = idExpr(21, mojang, modLit, JSON.stringify(ar.armorId))
+  const tagRl = idExpr(21, mojang, modLit, repairTagLit)
 
   lines.push('\t\t{')
   lines.push(
     `\t\t\tResourceKey<EquipmentAsset> asset_${ar.armorId} = ResourceKey.create(EquipmentAssets.ROOT_ID, ${assetRl});`,
   )
   lines.push(
-    `\t\t\tTagKey<Item> repair_${ar.armorId} = TagKey.create(BuiltInRegistries.ITEM.key(), ResourceLocation.fromNamespaceAndPath(${modLit}, ${repairTagLit}));`,
+    `\t\t\tTagKey<Item> repair_${ar.armorId} = TagKey.create(BuiltInRegistries.ITEM.key(), ${tagRl});`,
   )
   lines.push(
     `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(15, Map.of(ArmorType.BOOTS, Integer.valueOf(1), ArmorType.LEGGINGS, Integer.valueOf(2), ArmorType.CHESTPLATE, Integer.valueOf(3), ArmorType.HELMET, Integer.valueOf(1)), 15, SoundEvents.ARMOR_EQUIP_LEATHER, 0.0F, 0.0F, repair_${ar.armorId}, asset_${ar.armorId});`,
   )
-  lines.push(`\t\t\tResourceLocation item_${ar.armorId} = ${itemRl};`)
+  lines.push(`\t\t\t${idClass} item_${ar.armorId} = ${itemRl};`)
   lines.push(
     `\t\t\tRegistry.register(BuiltInRegistries.ITEM, item_${ar.armorId}, new Item(new Item.Properties().humanoidArmor(mat_${ar.armorId}, ${armorType}).durability(${dura})));`,
   )
@@ -129,9 +165,9 @@ function emitArmorBlockHumanoid(lines: string[], modId: string, ar: SimpleArmorF
 
 function emitArmorBlock21(lines: string[], modId: string, ar: SimpleArmorFeature): void {
   const matKey = `${ar.armorId}_material`
-  const matRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(matKey))
-  const layerRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(ar.armorId))
-  const itemRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(ar.armorId))
+  const matRl = idExpr(21, 'resource_location', JSON.stringify(modId), JSON.stringify(matKey))
+  const layerRl = idExpr(21, 'resource_location', JSON.stringify(modId), JSON.stringify(ar.armorId))
+  const itemRl = idExpr(21, 'resource_location', JSON.stringify(modId), JSON.stringify(ar.armorId))
   const typeName = armorTypeSimpleName(ar.slot)
 
   lines.push('\t\t{')
@@ -198,7 +234,7 @@ function emitArmorBlock20(lines: string[], modId: string, ar: SimpleArmorFeature
 
   lines.push('\t\t{')
   lines.push(
-    `\t\t\tResourceLocation id_${ar.armorId} = ${resourceLocationExpr(17, JSON.stringify(modId), JSON.stringify(ar.armorId))};`,
+    `\t\t\tResourceLocation id_${ar.armorId} = ${idExpr(17, 'resource_location', JSON.stringify(modId), JSON.stringify(ar.armorId))};`,
   )
   lines.push(
     `\t\t\tRegistry.register(BuiltInRegistries.ITEM, id_${ar.armorId}, new ArmorItem(new ArmorMaterial() {`,
@@ -244,15 +280,4 @@ function defenseSwitchLines(slot: SimpleArmorFeature['slot'], indent: string): s
   }
   lines.push(`${indent}return 0;`)
   return lines.join('\n')
-}
-
-function resourceLocationExpr(javaRelease: number, nsLiteral: string, pathLiteral: string): string {
-  if (javaRelease >= 21) {
-    return `ResourceLocation.fromNamespaceAndPath(${nsLiteral}, ${pathLiteral})`
-  }
-  return `new ResourceLocation(${nsLiteral}, ${pathLiteral})`
-}
-
-function resourceLocationInit(javaRelease: number, nsLiteral: string, pathLiteral: string): string {
-  return resourceLocationExpr(javaRelease, nsLiteral, pathLiteral)
 }
