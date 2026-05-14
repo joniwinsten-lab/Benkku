@@ -2,32 +2,59 @@ import type { ModSpec, SimpleArmorFeature, SimpleItemFeature } from './modspec.j
 import { vanillaLikeDurability } from './resourceAssets.js'
 
 /**
- * Generoi ModFeatures.java — pohja käyttää `loom.officialMojangMappings()`.
- * javaRelease >= 21: ArmorMaterial-tallenne + Holder; alle 21: ArmorMaterial-rajapinta.
+ * Generoi ModFeatures.java — `loom.officialMojangMappings()`.
+ * 1.21.11+: ArmorType + Item#humanoidArmor + equipment-resurssit (humanoidArmorApi).
+ * 1.21.1 / 1.21 (Java 21): ArmorMaterial-tallenne + BuiltInRegistries.ARMOR_MATERIAL + ArmorItem.
+ * 1.20.x: ArmorMaterial-rajapinta-anonyymi + ArmorItem.
  */
-export function renderModFeaturesJava(spec: ModSpec, javaRelease: number): string {
+export function renderModFeaturesJava(
+  spec: ModSpec,
+  javaRelease: number,
+  humanoidArmorApi: boolean,
+): string {
   const feats = spec.features ?? []
   const items = feats.filter((f): f is SimpleItemFeature => f.type === 'simple_item')
   const armors = feats.filter((f): f is SimpleArmorFeature => f.type === 'simple_armor')
 
+  const useHumanoidArmor = humanoidArmorApi && javaRelease >= 21 && armors.length > 0
+  const useLegacy21Armor = !useHumanoidArmor && javaRelease >= 21 && armors.length > 0
+  const useLegacy20Armor = javaRelease < 21 && armors.length > 0
+
   const lines: string[] = []
   lines.push('package fi.benkku.mod;')
   lines.push('')
-  lines.push('import java.util.EnumMap;')
-  lines.push('import java.util.List;')
+
   lines.push('import net.minecraft.core.Registry;')
   lines.push('import net.minecraft.core.registries.BuiltInRegistries;')
   lines.push('import net.minecraft.resources.ResourceLocation;')
-  lines.push('import net.minecraft.sounds.SoundEvent;')
-  lines.push('import net.minecraft.sounds.SoundEvents;')
-  lines.push('import net.minecraft.world.item.ArmorItem;')
-  lines.push('import net.minecraft.world.item.ArmorMaterial;')
   lines.push('import net.minecraft.world.item.Item;')
-  lines.push('import net.minecraft.world.item.crafting.Ingredient;')
-  const hasArmor21 = javaRelease >= 21 && armors.length > 0
-  if (hasArmor21) {
+
+  if (useHumanoidArmor) {
+    lines.push('import java.util.Map;')
+    lines.push('import net.minecraft.resources.ResourceKey;')
+    lines.push('import net.minecraft.sounds.SoundEvents;')
+    lines.push('import net.minecraft.tags.TagKey;')
+    lines.push('import net.minecraft.world.item.equipment.ArmorMaterial;')
+    lines.push('import net.minecraft.world.item.equipment.ArmorType;')
+    lines.push('import net.minecraft.world.item.equipment.EquipmentAsset;')
+    lines.push('import net.minecraft.world.item.equipment.EquipmentAssets;')
+  } else if (useLegacy21Armor) {
+    lines.push('import java.util.EnumMap;')
+    lines.push('import java.util.List;')
     lines.push('import net.minecraft.core.Holder;')
+    lines.push('import net.minecraft.sounds.SoundEvent;')
+    lines.push('import net.minecraft.sounds.SoundEvents;')
+    lines.push('import net.minecraft.world.item.ArmorItem;')
+    lines.push('import net.minecraft.world.item.ArmorMaterial;')
+    lines.push('import net.minecraft.world.item.crafting.Ingredient;')
+  } else if (useLegacy20Armor) {
+    lines.push('import net.minecraft.sounds.SoundEvent;')
+    lines.push('import net.minecraft.sounds.SoundEvents;')
+    lines.push('import net.minecraft.world.item.ArmorItem;')
+    lines.push('import net.minecraft.world.item.ArmorMaterial;')
+    lines.push('import net.minecraft.world.item.crafting.Ingredient;')
   }
+
   lines.push('')
   lines.push('public final class ModFeatures {')
   lines.push('\tprivate ModFeatures() {}')
@@ -36,7 +63,9 @@ export function renderModFeaturesJava(spec: ModSpec, javaRelease: number): strin
     emitItemBlock(lines, spec.modId, javaRelease, it)
   }
   for (const ar of armors) {
-    if (javaRelease >= 21) {
+    if (useHumanoidArmor) {
+      emitArmorBlockHumanoid(lines, spec.modId, ar)
+    } else if (javaRelease >= 21) {
       emitArmorBlock21(lines, spec.modId, ar)
     } else {
       emitArmorBlock20(lines, spec.modId, ar)
@@ -68,6 +97,36 @@ function emitItemBlock(
   lines.push('\t\t}')
 }
 
+/** Minecraft 1.21.11+ — ks. Fabric docs „Custom Armor 1.21.11”. */
+function emitArmorBlockHumanoid(lines: string[], modId: string, ar: SimpleArmorFeature): void {
+  const itemRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(ar.armorId))
+  const armorType = armorTypeHumanoid(ar.slot)
+  const dura = vanillaLikeDurability(ar.slot)
+  const repairTagPath = `${ar.armorId}_repair`
+  const repairTagLit = JSON.stringify(repairTagPath)
+  const modLit = JSON.stringify(modId)
+  const assetRl = resourceLocationExpr(21, modLit, JSON.stringify(ar.armorId))
+
+  lines.push('\t\t{')
+  lines.push(
+    `\t\t\tResourceKey<EquipmentAsset> asset_${ar.armorId} = ResourceKey.create(EquipmentAssets.ROOT_ID, ${assetRl});`,
+  )
+  lines.push(
+    `\t\t\tTagKey<Item> repair_${ar.armorId} = TagKey.create(BuiltInRegistries.ITEM.key(), ResourceLocation.fromNamespaceAndPath(${modLit}, ${repairTagLit}));`,
+  )
+  lines.push(
+    `\t\t\tArmorMaterial mat_${ar.armorId} = new ArmorMaterial(15, Map.of(ArmorType.BOOTS, Integer.valueOf(1), ArmorType.LEGGINGS, Integer.valueOf(2), ArmorType.CHESTPLATE, Integer.valueOf(3), ArmorType.HELMET, Integer.valueOf(1)), 15, SoundEvents.ARMOR_EQUIP_LEATHER, 0.0F, 0.0F, repair_${ar.armorId}, asset_${ar.armorId});`,
+  )
+  lines.push(`\t\t\tResourceLocation item_${ar.armorId} = ${itemRl};`)
+  lines.push(
+    `\t\t\tRegistry.register(BuiltInRegistries.ITEM, item_${ar.armorId}, new Item(new Item.Properties().humanoidArmor(mat_${ar.armorId}, ${armorType}).durability(${dura})));`,
+  )
+  lines.push(
+    `\t\t\tBenkkuMod.LOGGER.info("Registered armor {} ({})", item_${ar.armorId}, ${JSON.stringify(ar.displayName)});`,
+  )
+  lines.push('\t\t}')
+}
+
 function emitArmorBlock21(lines: string[], modId: string, ar: SimpleArmorFeature): void {
   const matKey = `${ar.armorId}_material`
   const matRl = resourceLocationExpr(21, JSON.stringify(modId), JSON.stringify(matKey))
@@ -95,6 +154,23 @@ function emitArmorBlock21(lines: string[], modId: string, ar: SimpleArmorFeature
     `\t\t\tBenkkuMod.LOGGER.info("Registered armor {} ({})", ${itemRl}, ${JSON.stringify(ar.displayName)});`,
   )
   lines.push('\t\t}')
+}
+
+function armorTypeHumanoid(slot: SimpleArmorFeature['slot']): string {
+  switch (slot) {
+    case 'helmet':
+      return 'ArmorType.HELMET'
+    case 'chestplate':
+      return 'ArmorType.CHESTPLATE'
+    case 'leggings':
+      return 'ArmorType.LEGGINGS'
+    case 'boots':
+      return 'ArmorType.BOOTS'
+    default: {
+      const _x: never = slot
+      return _x
+    }
+  }
 }
 
 function armorTypeSimpleName(slot: SimpleArmorFeature['slot']): string {

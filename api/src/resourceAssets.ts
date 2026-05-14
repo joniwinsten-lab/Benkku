@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { Jimp } from 'jimp'
+import { getFabricProfile } from './fabricVersions.js'
 import type { ModSpec, SimpleArmorFeature, SimpleItemFeature } from './modspec.js'
 
 function rgbFromTintOrHash(id: string, tintHex?: string): { r: number; g: number; b: number } {
@@ -62,9 +63,28 @@ function vanillaLikeDurability(slot: SimpleArmorFeature['slot']): number {
   }
 }
 
+function writeEquipmentModelJson(path: string, modId: string, assetName: string): void {
+  mkdirSync(dirname(path), { recursive: true })
+  const body = {
+    layers: {
+      humanoid: [{ texture: `${modId}:${assetName}` }],
+      humanoid_leggings: [{ texture: `${modId}:${assetName}` }],
+    },
+  }
+  writeFileSync(path, JSON.stringify(body, null, '\t') + '\n', 'utf8')
+}
+
+function writeEmptyItemTagJson(path: string): void {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, JSON.stringify({ replace: false, values: [] }, null, '\t') + '\n', 'utf8')
+}
+
 export async function writeModResources(workDir: string, spec: ModSpec): Promise<void> {
   const modId = spec.modId
+  const profile = getFabricProfile(spec.minecraftVersion)
+  const humanoidArmorApi = profile?.humanoidArmorApi === true
   const assets = join(workDir, 'src/main/resources/assets', modId)
+  const data = join(workDir, 'src/main/resources/data', modId)
   const feats = spec.features ?? []
 
   const langEn: Record<string, string> = {}
@@ -86,10 +106,19 @@ export async function writeModResources(workDir: string, spec: ModSpec): Promise
       const invPng = join(assets, 'textures/item', `${f.armorId}.png`)
       await writeSolidPng16(invPng, r, g, b)
       writeItemModelJson(join(assets, 'models/item', `${f.armorId}.json`), modId, f.armorId)
-      const layer1 = join(assets, 'textures/models/armor', `${f.armorId}_layer_1.png`)
-      const layer2 = join(assets, 'textures/models/armor', `${f.armorId}_layer_2.png`)
-      await writeSolidPng16(layer1, r, g, b)
-      await writeSolidPng16(layer2, r2, g2, b2)
+      if (humanoidArmorApi) {
+        const eqHumanoid = join(assets, 'textures/entity/equipment/humanoid', `${f.armorId}.png`)
+        const eqLegs = join(assets, 'textures/entity/equipment/humanoid_leggings', `${f.armorId}.png`)
+        await writeSolidPng16(eqHumanoid, r, g, b)
+        await writeSolidPng16(eqLegs, r2, g2, b2)
+        writeEquipmentModelJson(join(assets, 'equipment', `${f.armorId}.json`), modId, f.armorId)
+        writeEmptyItemTagJson(join(data, 'tags/item', `${f.armorId}_repair.json`))
+      } else {
+        const layer1 = join(assets, 'textures/models/armor', `${f.armorId}_layer_1.png`)
+        const layer2 = join(assets, 'textures/models/armor', `${f.armorId}_layer_2.png`)
+        await writeSolidPng16(layer1, r, g, b)
+        await writeSolidPng16(layer2, r2, g2, b2)
+      }
       langEn[`item.${modId}.${f.armorId}`] = f.displayName
       langFi[`item.${modId}.${f.armorId}`] = f.displayName
     }

@@ -11,6 +11,8 @@ export const FABRIC_VERSION_PROFILES = {
     minecraftDep: '~1.21.11',
     javaDep: '>=21',
     javaRelease: 21,
+    /** ArmorMaterial + ArmorItem (vanha) poistui; käytä ArmorType + Item#humanoidArmor + equipment-JSON. */
+    humanoidArmorApi: true,
   },
   '1.21.1': {
     minecraft: '1.21.1',
@@ -20,6 +22,7 @@ export const FABRIC_VERSION_PROFILES = {
     minecraftDep: '~1.21.1',
     javaDep: '>=21',
     javaRelease: 21,
+    humanoidArmorApi: false,
   },
   '1.21': {
     minecraft: '1.21',
@@ -29,6 +32,7 @@ export const FABRIC_VERSION_PROFILES = {
     minecraftDep: '~1.21',
     javaDep: '>=21',
     javaRelease: 21,
+    humanoidArmorApi: false,
   },
   '1.20.4': {
     minecraft: '1.20.4',
@@ -38,6 +42,7 @@ export const FABRIC_VERSION_PROFILES = {
     minecraftDep: '~1.20.4',
     javaDep: '>=17',
     javaRelease: 17,
+    humanoidArmorApi: false,
   },
   '1.20.1': {
     minecraft: '1.20.1',
@@ -47,6 +52,7 @@ export const FABRIC_VERSION_PROFILES = {
     minecraftDep: '~1.20.1',
     javaDep: '>=17',
     javaRelease: 17,
+    humanoidArmorApi: false,
   },
 } as const
 
