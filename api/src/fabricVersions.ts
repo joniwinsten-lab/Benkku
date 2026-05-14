@@ -68,6 +68,22 @@ export const SUPPORTED_MINECRAFT_VERSIONS = Object.keys(
   FABRIC_VERSION_PROFILES,
 ) as SupportedFabricMc[]
 
+/** Minecraft `pack.mcmeta` → `pack.pack_format` (resurssipaketin merkki-zipille). */
+export const RESOURCE_PACK_FORMAT: Record<SupportedFabricMc, number> = {
+  '1.21.11': 75,
+  '1.21.1': 34,
+  '1.21': 34,
+  '1.20.4': 22,
+  '1.20.1': 15,
+}
+
+export function getResourcePackFormat(mc: string): number {
+  if (mc in RESOURCE_PACK_FORMAT) {
+    return RESOURCE_PACK_FORMAT[mc as SupportedFabricMc]
+  }
+  return 34
+}
+
 export function getFabricProfile(
   mc: string,
 ): (typeof FABRIC_VERSION_PROFILES)[SupportedFabricMc] | null {

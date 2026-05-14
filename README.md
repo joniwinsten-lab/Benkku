@@ -39,7 +39,7 @@ Oletusportti: **8787**. Terveys: `GET http://127.0.0.1:8787/health`.
 - `POST /v1/build` — JSON: `{ "loader": "fabric", "minecraftVersion": "1.21.11", "modId": "benkku_mod", "displayName": "Benkun modi", "fabricLoaderVersion": "0.18.3" }` (viimeinen oletus **0.18.3**; `fabric.mod.json` vaatii `fabricloader` **≥0.18.3**) → `{ "jobId": "..." }` (HTTP 202).
 - `GET /v1/build/:id` — tila ja lokitail.
 - `GET /v1/build/:id/jar` — valmis `.jar` (kun tila on `done`). `Content-Type: application/octet-stream` (Chromen varoitusten lieventämiseksi).
-- `GET /v1/build/:id/zip` — zip, jonka sisällä sama `.jar` sopivalla tiedostonimellä (usein helpompi Chromessa kuin suora `.jar`).
+- `GET /v1/build/:id/zip` — zip: `mods/<nimi>.jar`, valinnainen `resourcepacks/Benkku_<modId>_<8hex>/pack.mcmeta` (merkki Resurssipaketit-listalla) ja `Benkku_LUEMINUT.txt`.
 
 **Tuki tällä hetkellä:** **Fabric** ja Minecraft **1.21.11, 1.21.1, 1.21, 1.20.4, 1.20.1** (katso `api/src/fabricVersions.ts`). Forge tulossa.
 

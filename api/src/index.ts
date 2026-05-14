@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { zipSync } from 'fflate'
 import { randomUUID } from 'node:crypto'
-import { SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
+import { getResourcePackFormat, SUPPORTED_MINECRAFT_VERSIONS } from './fabricVersions.js'
 import { FABRIC_LOADER_VERSIONS, ModSpecSchema, validateModSpecForBuild } from './modspec.js'
 import { interpretToDraft, parseInterpretRequest } from './interpret.js'
 import { runFabricBuild } from './worker.js'
@@ -51,6 +51,67 @@ function jarAttachmentFilename(j: Job): string {
 function zipAttachmentFilename(jarName: string): string {
   const base = jarName.replace(/[^a-zA-Z0-9._-]/g, '_')
   return base.toLowerCase().endsWith('.jar') ? `${base.slice(0, -4)}.zip` : `${base}.zip`
+}
+
+function utf8(s: string): Uint8Array {
+  return new TextEncoder().encode(s)
+}
+
+/**
+ * Zip: mods/*.jar + valinnainen resourcepacks/Benkku_* (tyhjä merkkipakka näkyy listalla).
+ * Resurssipaketti ei sisällä modilogiikkaa — Fabric-modi toimii vain .jar-tiedostosta mods-kansiossa.
+ */
+function buildBenkkuDownloadZip(j: Job, jarName: string, jarU8: Uint8Array): Uint8Array {
+  const specParsed =
+    j.spec != null && typeof j.spec === 'object' ? ModSpecSchema.safeParse(j.spec) : null
+  const modId = specParsed?.success === true ? specParsed.data.modId : 'benkku_mod'
+  const displayName =
+    specParsed?.success === true ? specParsed.data.displayName.trim() || modId : 'Benkku modi'
+  const mc = specParsed?.success === true ? specParsed.data.minecraftVersion : '1.21.11'
+  const packFmt = getResourcePackFormat(mc)
+  const jobShort = j.id.replace(/-/g, '').slice(0, 8)
+  const rpDir = `resourcepacks/Benkku_${modId}_${jobShort}`
+
+  const packMeta = {
+    pack: {
+      pack_format: packFmt,
+      description: `Benkku: ${displayName.slice(0, 64)} — asennusmerkki (modi: mods/${jarName})`,
+    },
+  }
+
+  const readme = [
+    'Benkku-lataus',
+    '============',
+    '',
+    'MODI (pakollinen)',
+    '-----------------',
+    `Tiedosto mods/${jarName} on Fabric-modi. Kopioi se profiilin mods-kansioon, esim.`,
+    '  Windows: %AppData%\\.minecraft\\mods\\',
+    '  tai Prism Launcher → instanssi → Minecraft-kansio → mods',
+    '',
+    'RESURSSIPAKETTI (vapaaehtoinen merkki)',
+    '--------------------------------------',
+    `Kansio ${rpDir}/ sisältää vain pack.mcmeta (ei tekstuureja).`,
+    `Minecraft ${mc}: pack_format=${packFmt}.`,
+    '',
+    'Kun kopioit kansion profiilin resourcepacks-kansioon ja otat paketin käyttöön',
+    '(Asetukset → Resurssipaketit), näet listalla että tämä Benkku-generaatio on asennettu.',
+    'Paketti ei korvaa modia eikä muuta pelin logiikkaa — modi vaatii silti .jar:n mods-kansiossa.',
+    '',
+    `Työn tunniste: ${j.id}`,
+    '',
+    'Vinkki: voit purkaa koko zipin suoraan profiilikansion juureen niin, että',
+    'mods- ja resourcepacks-kansiot päivittyvät kerralla (varmuuskopioi vanhat ensin).',
+    '',
+  ].join('\n')
+
+  const entries: Record<string, Uint8Array> = {
+    [`mods/${jarName}`]: jarU8,
+    [`${rpDir}/pack.mcmeta`]: utf8(JSON.stringify(packMeta, null, '\t') + '\n'),
+    'Benkku_LUEMINUT.txt': utf8(readme),
+  }
+
+  return zipSync(entries, { level: 6 })
 }
 
 const app = new Hono()
@@ -185,7 +246,10 @@ app.get('/v1/build/:id', (c) => {
   })
 })
 
-/** Zip sisältää yhden .jar-tiedoston — Chromen suora .jar-lataus estyy usein; pura zip mods-kansioon. */
+/**
+ * Zip: mods/*.jar + resourcepacks/Benkku_* (merkkipakka) + Benkku_LUEMINUT.txt.
+ * Chrome: suora .jar usein varoittaa — zip helpottaa; pura profiiliin tai kopioi mods/ ja halutessa resourcepacks/.
+ */
 app.get('/v1/build/:id/zip', (c) => {
   const id = c.req.param('id')
   const j = jobs.get(id)
@@ -197,7 +261,7 @@ app.get('/v1/build/:id/zip', (c) => {
   const jarName = jarAttachmentFilename(j)
   const zipName = zipAttachmentFilename(jarName)
   const jarU8 = new Uint8Array(j.jarBytes)
-  const zipped = zipSync({ [jarName]: jarU8 }, { level: 6 })
+  const zipped = buildBenkkuDownloadZip(j, jarName, jarU8)
 
   return new Response(Buffer.from(zipped), {
     status: 200,

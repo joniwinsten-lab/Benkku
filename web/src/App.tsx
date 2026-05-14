@@ -588,10 +588,12 @@ export default function App() {
                   useista minuuteista yli kymmeneen.
                 </li>
                 <li style={{ marginBottom: '0.35rem' }}>
-                  Kun modi on valmis, lataa ensisijaisesti <strong>zip</strong> (sisältää{' '}
-                  <code>.jar</code>
-                  -tiedoston). Pura zip ja siirrä <code>.jar</code> pelin <code>mods</code>-kansioon. Zip välttää
-                  usein Chromen varoitukset suorasta <code>.jar</code>-latauksesta.
+                  Kun modi on valmis, lataa ensisijaisesti <strong>zip</strong>: sisällä on{' '}
+                  <code>mods/</code>-kansiossa <code>.jar</code> sekä valinnainen{' '}
+                  <code>resourcepacks/Benkku_…</code>-merkkipakka (näkyy Resurssipaketit-listalla — ei sisällä
+                  modilogiikkaa). Voit purkaa zipin profiilin juureen tai kopioida vain{' '}
+                  <code>mods/*.jar</code>. Zip välttää usein Chromen varoitukset suorasta <code>.jar</code>
+                  -latauksesta.
                 </li>
               </ol>
             </div>
@@ -919,8 +921,9 @@ export default function App() {
                   </div>
                   <p className="mc-hint" style={{ textAlign: 'center', margin: 0, fontSize: '0.72rem' }}>
                     Chrome saattaa varoittaa suorasta <code>.jar</code>-tiedostosta — valitse usein{' '}
-                    <strong>Säilytä</strong> / „silti säilytä”, tai käytä zip-latausta. Pura zip ja kopioi{' '}
-                    <code>.jar</code> kansioon <code>mods</code>.
+                    <strong>Säilytä</strong> / „silti säilytä”, tai käytä zip-latausta. Zipissä modi on jo{' '}
+                    <code>mods/</code>-polussa; kopioi kansio tai pura profiiliin. Halutessasi ota käyttöön myös{' '}
+                    <code>resourcepacks/Benkku_…</code> merkkinä.
                   </p>
                 </>
               ) : null}
@@ -1235,7 +1238,7 @@ export default function App() {
         </section>
 
         <footer className="mc-footnote">
-          Windows: pura zip jos latasit sen, kopioi <code>.jar</code> kansioon <code>mods</code>. Sama
+          Zip: <code>mods/*.jar</code> + valinnainen <code>resourcepacks/Benkku_*</code> (lista näkyvyys). Sama
           Minecraft-versio ja Fabric asennettuna. Forge-tuki tulossa myöhemmin. Jos peli kaatuu
           käynnistyksessä (esim. „entrypoint main”), avaa instanssin <code>logs/latest.log</code> — siellä
           on varsinainen Java-virhe; launcherin ikkuna voi näyttää harhaanjohtavaa tekstiä.
